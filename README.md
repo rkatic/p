@@ -4,14 +4,14 @@
 
 A simple Promises/A+ library.
 
-- A subset of the [Q](/kriskowal/q) library.
-- Passing the [Promises/A+ Compliance Test Suite](/promises-aplus/promises-tests).
+- A subset of the [Q](https://github.com/kriskowal/q) library.
+- Passing the [Promises/A+ Compliance Test Suite](https://github.com/promises-aplus/promises-tests).
 - Small.
 - Fast.
 
 ##API
 
-P is a subset of [Q](/kriskowal/q).
+P is a subset of [Q](https://github.com/kriskowal/q).
 
 - `P(val)` same as `P.resolve(val)`
 - `P.reject(reason)`
