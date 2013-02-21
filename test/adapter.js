@@ -1,12 +1,6 @@
 
 var P = require('../p');
 
-exports.pending = function() {
-	var def = P.defer();
-	def.fulfill = def.resolve;
-	return def;
-};
-
+exports.pending = P.defer;
 exports.fulfilled = P.resolve;
-
 exports.rejected = P.reject;

@@ -125,15 +125,24 @@
 				if ( typeof func !== "function" ) {
 					if ( rejected ) {
 						def.reject( value );
-						return;
+					} else {
+						def.fulfill( value );
 					}
-					func = void 0;
-				}
 
-				try {
-					def.resolve( func ? func(value) : value );
-				} catch ( ex ) {
-					def.reject( ex );
+				} else {
+					var val;
+
+					try {
+						val = func( value );
+						if ( val && typeof val.then === "function" ) {
+							val.then( def.fulfill, def.reject );
+							return;
+						}
+					} catch ( ex ) {
+						def.reject( ex );
+					}
+
+					def.fulfill( val );
 				}
 			}
 
@@ -147,30 +156,24 @@
 			return def.promise;
 		}
 
-		function resolve( val ) {
+		function fulfill( val ) {
 			if ( pending ) {
-				if ( !rejected && val && typeof val.then === "function" ) {
-					val.then( resolve, reject );
-
-				} else {
-					value = val;
-					each( pending, runLater );
-					pending = null;
-				}
+				value = val;
+				each( pending, runLater );
+				pending = null;
 			}
 		}
 
-		// should never throw!!!
 		function reject( error ) {
 			if ( pending ) {
 				rejected = true;
-				resolve( error );
+				fulfill( error );
 			}
 		}
 
 		return {
 			promise: new Promise( then ),
-			resolve: resolve,
+			fulfill: fulfill,
 			reject: reject
 		};
 	}
@@ -203,13 +206,20 @@
 	};
 
 	P.resolve = resolve;
-	function resolve( value ) {
-		if ( value instanceof Promise ) {
-			return value;
+	function resolve( val ) {
+		if ( val instanceof Promise ) {
+			return val;
 		}
 
 		var def = defer();
-		def.resolve( value );
+
+		if ( val && typeof val.then === "function" ) {
+			val.then( def.fulfill, def.reject );
+
+		} else {
+			def.fulfill( val );
+		}
+
 		return def.promise;
 	}
 
@@ -231,7 +241,7 @@
 			resolve( promise ).then(function( value ) {
 				promises[ index ] = value;
 				if ( --countDown === 0 ) {
-					def.resolve( promises );
+					def.fulfill( promises );
 				}
 			}, def.reject );
 		});
