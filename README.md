@@ -11,7 +11,7 @@ A simple Promises/A+ library.
 
 ##API
 
-P is a subset of [Q](/kriskowal/q)
+P is a subset of [Q](/kriskowal/q).
 
 - `P(val)` same as `P.resolve(val)`
 - `P.reject(reason)`
