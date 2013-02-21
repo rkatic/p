@@ -13,11 +13,11 @@
 
 	var
 		// linked list with head node - used as a queue of tasks
-		// f: task, w: ticks required, n: next node
-		head = { f: null, w: 0, n: null }, tail = head,
+		// f: task, w: needed a tick, n: next node
+		head = { f: null, w: false, n: null }, tail = head,
 
 		// vars for tick re-usage
-		lastIsSafe = false, pendingTicks = 0, neededTicks = 0,
+		nextNeedsTick = true, pendingTicks = 0, neededTicks = 0,
 
 		channel, // MessageChannel
 		requestTick, // requestTick( onTick, 0 ) is the only valid usage!
@@ -29,23 +29,23 @@
 		--pendingTicks;
 		while ( head.n ) {
 			head = head.n;
-			neededTicks -= head.w;
+			if ( head.w ) {
+				--neededTicks;
+			}
 			var f = head.f;
 			head.f = null;
 			f();
 		}
-		lastIsSafe = false;
+		nextNeedsTick = true;
 	}
 
 	function runLater( f, couldThrow ) {
-		var w = 0;
-		if ( !lastIsSafe && ++neededTicks > pendingTicks ) {
+		if ( nextNeedsTick && ++neededTicks > pendingTicks ) {
 			++pendingTicks;
 			requestTick( onTick, 0 );
-			w = 1;
 		};
-		tail = tail.n = { f: f, w: w, n: null };
-		lastIsSafe = couldThrow !== true;
+		tail = tail.n = { f: f, w: nextNeedsTick, n: null };
+		nextNeedsTick = couldThrow === true;
 	}
 
 	function ot( type ) {
