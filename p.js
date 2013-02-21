@@ -234,19 +234,22 @@
 
 	P.all = all;
 	function all( promises ) {
-		var countDown = promises.length;
-		if ( countDown === 0 ) {
-			return resolve( promises );
-		}
+		var waiting = 0;
 		var def = defer();
 		each(promises, function( promise, index ) {
-			resolve( promise ).then(function( value ) {
-				promises[ index ] = value;
-				if ( --countDown === 0 ) {
-					def.fulfill( promises );
-				}
-			}, def.reject );
+			if ( index in promises ) {
+				++waiting;
+				resolve( promise ).then(function( value ) {
+					promises[ index ] = value;
+					if ( --waiting === 0 ) {
+						def.fulfill( promises );
+					}
+				}, def.reject );
+			}
 		});
+		if ( waiting === 0 ) {
+			def.fulfill( promises );
+		}
 		return def.promise;
 	}
 
