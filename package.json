@@ -5,7 +5,7 @@
   "main": "p.js",
   "scripts": {
     "test": "promises-aplus-tests test/adapter",
-    "prepublish": "uglifyjs p.js > p.min.js"
+    "prepublish": "uglifyjs p.js -o p.min.js -m"
   },
   "keywords": [
     "promise",
