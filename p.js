@@ -1,8 +1,8 @@
 ;(function( factory ){
-	if ( typeof module !== "undefined" && module.exports ) {
+	if ( typeof module !== "undefined" && module && module.exports ) {
 		module.exports = factory();
 
-	} else if ( typeof define !== "undefined" ) {
+	} else if ( typeof define !== "function" ) {
 		define( factory );
 
 	} else {
@@ -18,6 +18,8 @@
 
 		// vars for tick re-usage
 		lastIsSafe = false, pendingTicks = 0, neededTicks = 0,
+
+		channel, // MessageChannel
 		requestTick, // requestTick( onTick, 0 ) is the only valid usage!
 
 		// window or worker
@@ -64,7 +66,7 @@
 		};
 
 	} else if ( ft(typeof MessageChannel) ) {
-		var channel = new MessageChannel();
+		channel = new MessageChannel();
 		channel.port1.onmessage = onTick;
 		requestTick = function() {
 			channel.port2.postMessage(0);
@@ -250,10 +252,9 @@
 
 	P.promise = function( makeOrPromise ) {
 		var def = defer();
-		resolve( makeOrPromise )
-		.then(function( make ) {
+		resolve( makeOrPromise ).then(function( make ) {
 			try {
-				make( def.resolve, def.reject );
+				make( def.fulfill, def.reject );
 			} catch ( ex ) {
 				def.reject( ex );
 			}
