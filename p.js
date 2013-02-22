@@ -105,7 +105,9 @@
 
 	function each( arr, cb ) {
 		for ( var i = 0, l = arr.length; i < l; ++i ) {
-			cb( arr[i], i );
+			if ( i in arr ) {
+				cb( arr[i], i );
+			}
 		}
 	}
 
@@ -237,15 +239,13 @@
 		var waiting = 0;
 		var def = defer();
 		each(promises, function( promise, index ) {
-			if ( index in promises ) {
-				++waiting;
-				resolve( promise ).then(function( value ) {
-					promises[ index ] = value;
-					if ( --waiting === 0 ) {
-						def.fulfill( promises );
-					}
-				}, def.reject );
-			}
+			++waiting;
+			resolve( promise ).then(function( value ) {
+				promises[ index ] = value;
+				if ( --waiting === 0 ) {
+					def.fulfill( promises );
+				}
+			}, def.reject );
 		});
 		if ( waiting === 0 ) {
 			def.fulfill( promises );
