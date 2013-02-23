@@ -26,5 +26,7 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API with few **
 - `promise.then(onFulfilled, onRejected)`
 - `promise.done(onFulfilled, onRejected)`
 - `promise.spread(onFulfilled, onRejected)`
+- `promise.timeout(ms)`
+- `promise.delay(ms)`
 - **`promise.state` ("pending", "fulfilled, or "rejected")**
 - **`promise.value` (resolved value/exception)**

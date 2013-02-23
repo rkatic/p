@@ -267,6 +267,32 @@
 		}, eb);
 	};
 
+	Promise.prototype.timeout = function( ms ) {
+		var def = defer();
+		var timeoutId = setTimeout(function() {
+			def.reject( new Error("Timed out after " + ms + " ms") );
+		}, ms);
+
+		this.when(function( value ) {
+			clearTimeout( timeoutId );
+			def.fulfill( value );
+		}, function( error ) {
+			clearTimeout( timeoutId );
+			def.reject( error );
+		}, ALT);
+
+		return def.promise;
+	};
+
+	Promise.prototype.delay = function( ms ) {
+		var self = this;
+		var def = defer();
+		setTimeout(function() {
+			def.resolve( self );
+		}, ms);
+		return def.promise;
+	};
+
 	P.all = all;
 	function all( promises ) {
 		var waiting = 0;
