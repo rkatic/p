@@ -27,4 +27,4 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `promise.done(onFulfilled, onRejected)`
 - `promise.spread(onFulfilled, onRejected)`
 - `promise.state` ("pending", "fulfilled, or "rejected")
-- `promise.value` (resolved value or exception)
+- `promise.value` (resolved value/exception)
