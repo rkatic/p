@@ -98,6 +98,7 @@
 					img.src = 'data:image/png,';
 				};
 
+				// Before using it, test if it works properly, with async dispatching.
 				try {
 					requestTickViaImage(function() {
 						if ( --c === 0 ) {
@@ -107,6 +108,7 @@
 					++c;
 				} catch (e) {}
 
+				// Also use it only if faster then setTimeout.
 				c && setTimeout(function() {
 					c = 0;
 				}, 0);
