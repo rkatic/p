@@ -18,7 +18,6 @@
 
 		// vars for tick re-usage
 		nextNeedsTick = true, pendingTicks = 0, neededTicks = 0,
-		taskReturned = true,
 
 		channel, // MessageChannel
 		requestTick, // requestTick( onTick, 0 ) is the only valid usage!
@@ -27,27 +26,28 @@
 		wow = ot(typeof window) && window || ot(typeof worker) && worker,
 
 		toStr = head.toString,
-		isArray;
+		isArray,
+
+		ALT = {};
 
 	function onTick() {
-		if ( --pendingTicks === 0 && head.n && head.n.n ) {
-			// In case of multiple tasks, ensure at least one successive tick
-			// to handle remaining task in case one throws, even if specified it will not.
-			++pendingTicks;
-			requestTick( onTick, 0 );
-		}
-		while ( head.n ) {
-			head = head.n;
-			if ( head.w ) {
-				--neededTicks;
-			} else if ( !taskReturned && ot(typeof console) && ft(typeof console.warn) ) {
-				console.warn("Performance warning - a task had thrown even if specified it will not")
+		--pendingTicks;
+		if ( head.n ) {
+			if ( !pendingTicks && head.n.n ) {
+				// In case of multiple tasks, ensure at least one successive tick
+				// to handle remaining task in case one throws, even if specified it will not.
+				++pendingTicks;
+				requestTick( onTick, 0 );
 			}
-			var f = head.f;
-			head.f = null;
-			taskReturned = false;
-			f();
-			taskReturned = true;
+			do {
+				head = head.n;
+				if ( head.w ) {
+					--neededTicks;
+				}
+				var f = head.f;
+				head.f = null;
+				f();
+			} while ( head.n )
 		}
 		nextNeedsTick = true;
 	}
@@ -156,20 +156,25 @@
 			promise = new Promise( then ),
 			value;
 
-		function then( onFulfilled, onRejected ) {
-			var def = defer();
+		function then( onFulfilled, onRejected, alt, altDef ) {
+			var def = alt === ALT ? altDef : defer();
 
 			function onReslved() {
 				var func = rejected ? onRejected : onFulfilled;
 
+				if ( !def ) {
+					func && func( value );
+					return;
+				}
+
 				if ( typeof func === "function" ) {
 					try {
-						var val = func( value );
+						var res = func( value );
 					} catch ( ex ) {
 						def.reject( ex );
 					}
 
-					def.resolve( val );
+					def.resolve( res );
 
 				} else if ( rejected ) {
 					def.reject( value );
@@ -186,12 +191,15 @@
 				runLater( onReslved );
 			}
 
-			return def.promise;
+			return def && def.promise;
 		}
 
 		function resolve( val ) {
 			if ( pending ) {
-				if ( val && typeof val.then === "function" ) {
+				if ( val instanceof Promise ) {
+					val.then( fulfill, reject, ALT );
+
+				} else if ( val && typeof val.then === "function" ) {
 					try {
 						val.then( fulfill, reject );
 					} catch ( ex ) {
@@ -248,7 +256,7 @@
 					throw error;
 				}
 			}, true);
-		});
+		}, ALT);
 	};
 
 	Promise.prototype.spread = function( cb, eb ) {
@@ -268,7 +276,7 @@
 				if ( --waiting === 0 ) {
 					def.fulfill( promises );
 				}
-			}, def.reject );
+			}, def.reject, ALT);
 		});
 		if ( waiting === 0 ) {
 			def.fulfill( promises );
@@ -288,7 +296,7 @@
 		each(promises, function( promise, index ) {
 			++waiting;
 			promises[ index ] = promise = P( promise );
-			promise.then( callback, callback );
+			promise.then( callback, callback, ALT );
 		});
 		callback();
 		return def.promise;
