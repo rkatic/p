@@ -11,12 +11,12 @@ A simple Promises/A+ library.
 
 ##API
 
-P implements a subset of the [Q](https://github.com/kriskowal/q) API.
+P implements a subset of the [Q](https://github.com/kriskowal/q) API with few **differences**.
 
 - `P(val)`
 - `P.defer()`
-- `P.all(promises)`
-- `P.allResolved(promises)`
+- `P.all(promises)` (array **or object** of promises)
+- `P.allResolved(promises)` (array **or object** of promises)
 - `P.onerror`
 - `P.nextTick(callback)`
 - `deferred.promise`
@@ -26,5 +26,5 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `promise.then(onFulfilled, onRejected)`
 - `promise.done(onFulfilled, onRejected)`
 - `promise.spread(onFulfilled, onRejected)`
-- `promise.state` ("pending", "fulfilled, or "rejected")
-- `promise.value` (resolved value/exception)
+- **`promise.state` ("pending", "fulfilled, or "rejected")**
+- **`promise.value` (resolved value/exception)**
