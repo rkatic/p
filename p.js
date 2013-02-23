@@ -297,14 +297,14 @@
 	function all( promises ) {
 		var waiting = 0;
 		var def = defer();
-		each(promises, function( promise, index ) {
+		each( promises, function( promise, index ) {
 			++waiting;
 			P( promise ).then(function( value ) {
 				promises[ index ] = value;
 				if ( --waiting === 0 ) {
 					def.fulfill( promises );
 				}
-			}, def.reject, ALT);
+			}, def.reject, ALT );
 		});
 		if ( waiting === 0 ) {
 			def.fulfill( promises );
@@ -318,10 +318,10 @@
 		var def = defer();
 		function callback() {
 			if ( --waiting === 0 ) {
-				def.fulfill( promise );
+				def.fulfill( promises );
 			}
 		}
-		each(promises, function( promise, index ) {
+		each( promises, function( promise, index ) {
 			++waiting;
 			promises[ index ] = promise = P( promise );
 			promise.then( callback, callback, ALT );
