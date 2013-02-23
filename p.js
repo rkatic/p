@@ -23,7 +23,10 @@
 		requestTick, // requestTick( onTick, 0 ) is the only valid usage!
 
 		// window or worker
-		wow = ot(typeof window) && window || ot(typeof worker) && worker;
+		wow = ot(typeof window) && window || ot(typeof worker) && worker,
+
+		toStr = head.toString,
+		isArray;
 
 	function onTick() {
 		--pendingTicks;
@@ -103,11 +106,26 @@
 
 	//__________________________________________________________________________
 
-	function each( arr, cb ) {
+	isArray = Array.isArray || function( val ) {
+		return !!val && toStr.call( val ) === "[object Array]";
+	};
+
+	function forEach( arr, cb ) {
 		for ( var i = 0, l = arr.length; i < l; ++i ) {
 			if ( i in arr ) {
 				cb( arr[i], i );
 			}
+		}
+	}
+
+	function each( obj, cb ) {
+		if ( isArray(obj) ) {
+			forEach( obj, cb );
+			return;
+		}
+
+		for ( var prop in obj ) {
+			cb( obj[prop], prop );
 		}
 	}
 
@@ -174,7 +192,7 @@
 			if ( pending ) {
 				promise.state = rejected ? "rejected" : "fulfilled";
 				promise.value = value = val;
-				each( pending, runLater );
+				forEach( pending, runLater );
 				pending = null;
 			}
 		}
@@ -243,7 +261,7 @@
 	}
 
 	P.allResolved = allResolved;
-	function allResolved( promise ) {
+	function allResolved( promises ) {
 		var waiting = 1;
 		var def = defer();
 		function callback() {
@@ -251,9 +269,10 @@
 				def.fulfill( promise );
 			}
 		}
-		each(promise, function( promise ) {
+		each(promises, function( promise, index ) {
 			++waiting;
-			P( promise ).then( callback, callback );
+			promises[ index ] = promise = P( promise );
+			promise.then( callback, callback );
 		});
 		callback();
 		return def.promise;
