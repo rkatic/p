@@ -125,6 +125,7 @@
 	function defer() {
 		var pending = [],
 			rejected = false,
+			promise = new Promise( then ),
 			value;
 
 		function then( onFulfilled, onRejected ) {
@@ -169,7 +170,8 @@
 
 		function fulfill( val ) {
 			if ( pending ) {
-				value = val;
+				promise.state = rejected ? "rejected" : "fulfilled";
+				promise.value = value = val;
 				each( pending, runLater );
 				pending = null;
 			}
@@ -183,7 +185,7 @@
 		}
 
 		return {
-			promise: new Promise( then ),
+			promise: promise,
 			resolve: resolve,
 			fulfill: fulfill,
 			reject: reject
@@ -193,6 +195,8 @@
 
 	function Promise( then ) {
 		this.then = then;
+		this.state = "pending";
+		this.value = void 0;
 	}
 
 	Promise.prototype.done = function( cb, eb ) {
@@ -250,6 +254,7 @@
 			P( promise ).then( callback, callback );
 		});
 		callback();
+		return def.promise;
 	}
 
 	P.onerror = null;
