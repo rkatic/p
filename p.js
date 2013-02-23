@@ -154,10 +154,12 @@
 
 				if ( typeof func === "function" ) {
 					try {
-						def.resolve( func( value ) );
+						var val = func( value );
 					} catch ( ex ) {
 						def.reject( ex );
 					}
+
+					def.resolve( val );
 
 				} else if ( rejected ) {
 					def.reject( value );
@@ -180,7 +182,11 @@
 		function resolve( val ) {
 			if ( pending ) {
 				if ( val && typeof val.then === "function" ) {
-					val.then( fulfill, reject );
+					try {
+						val.then( fulfill, reject );
+					} catch ( ex ) {
+						reject( ex );
+					}
 
 				} else {
 					fulfill( val );
