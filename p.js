@@ -117,14 +117,7 @@
 		}
 
 		var def = defer();
-
-		if ( val && typeof val.then === "function" ) {
-			val.then( def.fulfill, def.reject );
-
-		} else {
-			def.fulfill( val );
-		}
-
+		def.resolve( val );
 		return def.promise;
 	}
 
@@ -140,27 +133,18 @@
 			function onReslved() {
 				var func = rejected ? onRejected : onFulfilled;
 
-				if ( typeof func !== "function" ) {
-					if ( rejected ) {
-						def.reject( value );
-					} else {
-						def.fulfill( value );
-					}
-
-				} else {
-					var val;
-
+				if ( typeof func === "function" ) {
 					try {
-						val = func( value );
-						if ( val && typeof val.then === "function" ) {
-							val.then( def.fulfill, def.reject );
-							return;
-						}
+						def.resolve( func( value ) );
 					} catch ( ex ) {
 						def.reject( ex );
 					}
 
-					def.fulfill( val );
+				} else if ( rejected ) {
+					def.reject( value );
+
+				} else {
+					def.fulfill( value );
 				}
 			}
 
@@ -172,6 +156,15 @@
 			}
 
 			return def.promise;
+		}
+
+		function resolve( val ) {
+			if ( val && typeof val.then === "function" ) {
+				val.then( fulfill, reject );
+
+			} else {
+				fulfill( val );
+			}
 		}
 
 		function fulfill( val ) {
@@ -191,6 +184,7 @@
 
 		return {
 			promise: new Promise( then ),
+			resolve: resolve,
 			fulfill: fulfill,
 			reject: reject
 		};
@@ -243,7 +237,7 @@
 	}
 
 	P.onerror = null;
-	
+
 	P.prototype = Promise.prototype;
 
 	P.nextTick = function( f ) {

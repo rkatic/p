@@ -19,6 +19,7 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `P.onerror`
 - `P.nextTick(callback)`
 - `deferred.promise`
+- `deferred.resolve(value)`
 - `deferred.fulfill(value)`
 - `deferred.reject(reason)`
 - `promise.then(onFulfilled, onRejected)`
