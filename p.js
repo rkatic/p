@@ -223,7 +223,7 @@
 		var def = defer();
 		each(promises, function( promise, index ) {
 			++waiting;
-			resolve( promise ).then(function( value ) {
+			P( promise ).then(function( value ) {
 				promises[ index ] = value;
 				if ( --waiting === 0 ) {
 					def.fulfill( promises );
@@ -234,6 +234,22 @@
 			def.fulfill( promises );
 		}
 		return def.promise;
+	}
+
+	P.allResolved = allResolved;
+	function allResolved( promise ) {
+		var waiting = 1;
+		var def = defer();
+		function callback() {
+			if ( --waiting === 0 ) {
+				def.fulfill( promise );
+			}
+		}
+		each(promise, function( promise ) {
+			++waiting;
+			P( promise ).then( callback, callback );
+		});
+		callback();
 	}
 
 	P.onerror = null;
