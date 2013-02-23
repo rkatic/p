@@ -111,8 +111,22 @@
 		}
 	}
 
-	var P = resolve;
-	P.prototype = Promise.prototype;
+	function P( val ) {
+		if ( val instanceof Promise ) {
+			return val;
+		}
+
+		var def = defer();
+
+		if ( val && typeof val.then === "function" ) {
+			val.then( def.fulfill, def.reject );
+
+		} else {
+			def.fulfill( val );
+		}
+
+		return def.promise;
+	}
 
 	P.defer = defer;
 	function defer() {
@@ -209,31 +223,6 @@
 		}, eb);
 	};
 
-	P.resolve = resolve;
-	function resolve( val ) {
-		if ( val instanceof Promise ) {
-			return val;
-		}
-
-		var def = defer();
-
-		if ( val && typeof val.then === "function" ) {
-			val.then( def.fulfill, def.reject );
-
-		} else {
-			def.fulfill( val );
-		}
-
-		return def.promise;
-	}
-
-	P.reject = reject;
-	function reject( value ) {
-		var def = defer();
-		def.reject( value );
-		return def.promise;
-	}
-
 	P.all = all;
 	function all( promises ) {
 		var waiting = 0;
@@ -254,6 +243,8 @@
 	}
 
 	P.onerror = null;
+	
+	P.prototype = Promise.prototype;
 
 	P.nextTick = function( f ) {
 		runLater( f, true );
