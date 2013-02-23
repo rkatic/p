@@ -160,11 +160,13 @@
 		}
 
 		function resolve( val ) {
-			if ( val && typeof val.then === "function" ) {
-				val.then( fulfill, reject );
+			if ( pending ) {
+				if ( val && typeof val.then === "function" ) {
+					val.then( fulfill, reject );
 
-			} else {
-				fulfill( val );
+				} else {
+					fulfill( val );
+				}
 			}
 		}
 
