@@ -1,7 +1,16 @@
 {
   "name": "p-promise",
   "version": "0.0.5",
-  "description": "Simple promise-a library.",
+  "description": "A simple Promises/A+ library.",
+  "author": "Robert Katić <robert.katic@gmail.com> (https://github.com/rkatic)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/rkatic/p.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rkatic/p/issues"
+  },
   "main": "p.js",
   "scripts": {
     "posttest": "uglifyjs p.js -o p.min.js -m",
@@ -11,8 +20,6 @@
     "promise",
     "promises"
   ],
-  "author": "rkatic",
-  "license": "MIT",
   "devDependencies": {
     "promises-aplus-tests": "*",
     "uglify-js": "*"
