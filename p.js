@@ -253,18 +253,6 @@
 		return def.promise;
 	}
 
-	P.promise = function( makeOrPromise ) {
-		var def = defer();
-		resolve( makeOrPromise ).then(function( make ) {
-			try {
-				make( def.fulfill, def.reject );
-			} catch ( ex ) {
-				def.reject( ex );
-			}
-		}, def.reject);
-		return def.promise;
-	};
-
 	P.onerror = null;
 
 	P.nextTick = function( f ) {
