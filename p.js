@@ -18,6 +18,7 @@
 
 		// vars for tick re-usage
 		nextNeedsTick = true, pendingTicks = 0, neededTicks = 0,
+		taskReturned = true,
 
 		channel, // MessageChannel
 		requestTick, // requestTick( onTick, 0 ) is the only valid usage!
@@ -29,15 +30,24 @@
 		isArray;
 
 	function onTick() {
-		--pendingTicks;
+		if ( --pendingTicks === 0 && head.n && head.n.n ) {
+			// In case of multiple tasks, ensure at least one successive tick
+			// to handle remaining task in case one throws, even if specified it will not.
+			++pendingTicks;
+			requestTick( onTick, 0 );
+		}
 		while ( head.n ) {
 			head = head.n;
 			if ( head.w ) {
 				--neededTicks;
+			} else if ( !taskReturned && ot(typeof console) && ft(typeof console.warn) ) {
+				console.warn("Performance warning - a task had thrown even if specified it will not")
 			}
 			var f = head.f;
 			head.f = null;
+			taskReturned = false;
 			f();
+			taskReturned = true;
 		}
 		nextNeedsTick = true;
 	}
