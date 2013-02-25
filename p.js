@@ -2,7 +2,7 @@
 	if ( typeof module !== "undefined" && module && module.exports ) {
 		module.exports = factory();
 
-	} else if ( typeof define !== "function" ) {
+	} else if ( typeof define === "function" ) {
 		define( factory );
 
 	} else {
