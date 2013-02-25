@@ -1,10 +1,13 @@
 ;(function( factory ){
+	// CommonJS
 	if ( typeof module !== "undefined" && module && module.exports ) {
 		module.exports = factory();
 
+	// RequireJS
 	} else if ( typeof define === "function" ) {
 		define( factory );
 
+	// global
 	} else {
 		P = factory();
 	}
