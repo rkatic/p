@@ -205,11 +205,13 @@
 					val.then( fulfill, reject, ALT );
 
 				} else if ( val && typeof val.then === "function" ) {
-					try {
-						val.then( fulfill, reject );
-					} catch ( ex ) {
-						reject( ex );
-					}
+					runLater(function() {
+						try {
+							val.then( fulfill, reject );
+						} catch ( ex ) {
+							reject( ex );
+						}
+					});
 
 				} else {
 					fulfill( val );
