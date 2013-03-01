@@ -4,7 +4,7 @@
 		module.exports = factory();
 
 	// RequireJS
-	} else if ( typeof define === "function" ) {
+	} else if ( typeof define === "function" && define.amd ) {
 		define( factory );
 
 	// global
