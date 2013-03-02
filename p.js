@@ -177,6 +177,7 @@
 						var res = func( value );
 					} catch ( ex ) {
 						def.reject( ex );
+						return;
 					}
 
 					def.resolve( res );
