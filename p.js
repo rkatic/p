@@ -343,6 +343,8 @@
 		runLater( f, true );
 	};
 
+	P.ALT = ALT;
+
 	//P.runLater = runLater;
 
 	return P;
