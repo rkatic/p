@@ -164,7 +164,7 @@
 		function then( onFulfilled, onRejected, alt, altDef ) {
 			var def = alt === ALT ? altDef : defer();
 
-			function onReslved() {
+			function onSettled() {
 				var func = rejected ? onRejected : onFulfilled;
 
 				if ( !def ) {
@@ -190,10 +190,10 @@
 			}
 
 			if ( pending ) {
-				pending.push( onReslved );
+				pending.push( onSettled );
 
 			} else {
-				runLater( onReslved );
+				runLater( onSettled );
 			}
 
 			return def && def.promise;
