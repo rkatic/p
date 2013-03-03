@@ -161,8 +161,8 @@
 			promise = new Promise( then ),
 			value;
 
-		function then( onFulfilled, onRejected, alt, altDef ) {
-			var def = alt === ALT ? altDef : defer();
+		function then( onFulfilled, onRejected, alt, sync ) {
+			var def = alt === ALT ? void 0 : defer();
 
 			function onSettled() {
 				var func = rejected ? onRejected : onFulfilled;
@@ -193,6 +193,9 @@
 			if ( pending ) {
 				pending.push( onSettled );
 
+			} else if ( !def && sync ) {
+				onSettled();
+
 			} else {
 				runLater( onSettled );
 			}
@@ -203,7 +206,7 @@
 		function resolve( val ) {
 			if ( pending ) {
 				if ( val instanceof Promise ) {
-					val.then( fulfill, reject, ALT );
+					val.then( fulfill, reject, ALT, true );
 
 				} else if ( val && typeof val.then === "function" ) {
 					runLater(function() {
@@ -285,7 +288,7 @@
 		}, function( error ) {
 			clearTimeout( timeoutId );
 			def.reject( error );
-		}, ALT);
+		}, ALT, true);
 
 		return def.promise;
 	};
@@ -345,6 +348,8 @@
 	};
 
 	P.ALT = ALT;
+
+	P._each = each;
 
 	//P.runLater = runLater;
 
