@@ -16,8 +16,8 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API with few **
 - `P(val)`
 - `P.defer()`
 - `P.all(promises)` (array **or object** of promises)
-- `P.allSettled(promises)` (array **or object** of promises)
-- `P.allResolved(promises)` **DEPRECATED - use P.allSettled instead**
+- **`P.allSettled(promises)`** (array **or object** of promises)
+- `P.allResolved(promises)` **DEPRECATED** in favor of **`P.allSettled`**.
 - `P.onerror`
 - `P.nextTick(callback)`
 - `deferred.promise`
@@ -29,5 +29,5 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API with few **
 - `promise.spread(onFulfilled, onRejected)`
 - `promise.timeout(ms)`
 - `promise.delay(ms)`
-- **`promise.state` ("pending", "fulfilled, or "rejected")**
-- **`promise.value` (resolved value/exception)**
+- **`promise.state`** (`"pending"`, `"fulfilled"`, or `"rejected"`)
+- **`promise.value`** (resolved value/exception)
