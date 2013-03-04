@@ -321,8 +321,9 @@
 		return def.promise;
 	}
 
-	P.allResolved = allResolved;
-	function allResolved( promises ) {
+	// P.allResolved is DEPRECATED!
+	P.allSettled = P.allResolved = allSettled;
+	function allSettled( promises ) {
 		var waiting = 1;
 		var def = defer();
 		function callback() {
