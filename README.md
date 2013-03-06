@@ -22,7 +22,6 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API with few **
 - `P.nextTick(callback)`
 - `deferred.promise`
 - `deferred.resolve(value)`
-- `deferred.fulfill(value)`
 - `deferred.reject(reason)`
 - `promise.then(onFulfilled, onRejected)`
 - `promise.done(onFulfilled, onRejected)`
