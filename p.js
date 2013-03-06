@@ -157,7 +157,7 @@
 	P.defer = defer;
 	function defer() {
 		var pending = [],
-			rejected = false,
+			fulfilled = false,
 			promise = new Promise( then ),
 			value;
 
@@ -165,7 +165,7 @@
 			var def = alt === ALT ? void 0 : defer();
 
 			function onSettled() {
-				var func = rejected ? onRejected : onFulfilled;
+				var func = fulfilled ? onFulfilled : onRejected;
 
 				if ( !def ) {
 					func && func( value );
@@ -182,11 +182,11 @@
 
 					def.resolve( res );
 
-				} else if ( rejected ) {
-					def.reject( value );
+				} else if ( fulfilled ) {
+					def.resolve( value );
 
 				} else {
-					def.fulfill( value );
+					def.reject( value );
 				}
 			}
 
@@ -203,47 +203,40 @@
 			return def && def.promise;
 		}
 
-		function resolve( val ) {
+		var resolve = function( val ) {
 			if ( pending ) {
 				if ( val instanceof Promise ) {
-					val.then( fulfill, reject, ALT, true );
+					val.then( resolve, settle, ALT, true );
 
 				} else if ( val && typeof val.then === "function" ) {
 					runLater(function() {
 						try {
-							val.then( fulfill, reject );
+							val.then( resolve, settle );
 						} catch ( ex ) {
-							reject( ex );
+							settle( ex );
 						}
 					});
 
 				} else {
-					fulfill( val );
+					fulfilled = true;
+					settle( val );
 				}
 			}
-		}
+		};
 
-		function fulfill( val ) {
+		var settle = function( val ) {
 			if ( pending ) {
-				promise.state = rejected ? "rejected" : "fulfilled";
+				promise.state = fulfilled ? "fulfilled" : "rejected";
 				promise.value = value = val;
 				forEach( pending, runLater );
 				pending = null;
 			}
-		}
-
-		function reject( error ) {
-			if ( pending ) {
-				rejected = true;
-				fulfill( error );
-			}
-		}
+		};
 
 		return {
 			promise: promise,
 			resolve: resolve,
-			fulfill: fulfill,
-			reject: reject
+			reject: settle
 		};
 	}
 
@@ -284,7 +277,7 @@
 
 		this.when(function( value ) {
 			clearTimeout( timeoutId );
-			def.fulfill( value );
+			def.resolve( value );
 		}, function( error ) {
 			clearTimeout( timeoutId );
 			def.reject( error );
@@ -311,12 +304,12 @@
 			P( promise ).then(function( value ) {
 				promises[ index ] = value;
 				if ( --waiting === 0 ) {
-					def.fulfill( promises );
+					def.resolve( promises );
 				}
 			}, def.reject, ALT );
 		});
 		if ( waiting === 0 ) {
-			def.fulfill( promises );
+			def.resolve( promises );
 		}
 		return def.promise;
 	}
@@ -328,7 +321,7 @@
 		var def = defer();
 		function callback() {
 			if ( --waiting === 0 ) {
-				def.fulfill( promises );
+				def.resolve( promises );
 			}
 		}
 		each( promises, function( promise, index ) {
