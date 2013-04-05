@@ -169,6 +169,7 @@
 	function defer() {
 		var pending = [],
 			fulfilled = false,
+			postponed = 0,
 			value;
 
 		function then( onFulfilled, onRejected, alt, sync ) {
@@ -211,6 +212,11 @@
 
 		function resolve( x, alt, ok ) {
 			if ( pending ) {
+				if ( postponed > 0 ) {
+					postponeResolution( x, alt, ok );
+					return;
+				}
+
 				if ( alt === ALT ) { // settle
 					fulfilled = !!ok;
 					value = x;
@@ -227,6 +233,11 @@
 				var then, type = typeof x;
 
 				if ( type === "object" && x !== null || type === "function" ) {
+					if ( postponed >= 0 ) {
+						postponeResolution( x );
+						return;
+					}
+
 					try {
 						then = x.then;
 
@@ -251,6 +262,15 @@
 
 		function reject( reson ) {
 			resolve( reson, ALT, false );
+		}
+
+		function postponeResolution( x, alt, ok ) {
+			++postponed;
+			runLater(function() {
+				postponed = ~( postponed - 1 );
+				resolve( x, alt, ok );
+				postponed = ~postponed;
+			});
 		}
 
 		return {
