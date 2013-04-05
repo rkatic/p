@@ -216,8 +216,10 @@
 					value = x;
 					forEach( pending, runLater );
 					pending = null;
+					return;
+				}
 
-				} else if ( x instanceof Promise ) {
+				if ( x instanceof Promise ) {
 					x.then( fulfill, reject, ALT, true );
 					return;
 				}
