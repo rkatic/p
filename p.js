@@ -74,8 +74,8 @@
 
 
 	if ( ot(typeof process) && process && ft(typeof process.nextTick) ) {
-		//requestTick = process.nextTick;
-		runLater = process.nextTick;
+		requestTick = process.nextTick;
+		//runLater = process.nextTick;
 
 	} else if ( wow && ft(typeof wow.setImmediate) ) {
 		requestTick = function( cb ) {
