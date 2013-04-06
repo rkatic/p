@@ -290,8 +290,10 @@
 	};
 
 	Promise.prototype.spread = function( cb, eb ) {
-		return this.then(cb && function( values ) {
-			return cb.apply( void 0, values );
+		return this.then(cb && function( array ) {
+			return all( array ).then(function( values ) {
+				return cb.apply( void 0, values );
+			});
 		}, eb);
 	};
 
