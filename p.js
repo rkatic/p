@@ -72,15 +72,18 @@
 		return type === "function";
 	}
 
+	if ( ft(typeof setImmediate) ) {
+		requestTick = wow ?
+			function( cb ) {
+				wow.setImmediate( cb );
+			} :
+			function( cb ) {
+				setImmediate( cb );
+			};
 
-	if ( ot(typeof process) && process && ft(typeof process.nextTick) ) {
+	} else if ( ot(typeof process) && process && ft(typeof process.nextTick) ) {
 		requestTick = process.nextTick;
 		//runLater = process.nextTick;
-
-	} else if ( wow && ft(typeof wow.setImmediate) ) {
-		requestTick = function( cb ) {
-			wow.setImmediate( cb );
-		};
 
 	} else if ( ft(typeof MessageChannel) ) {
 		channel = new MessageChannel();
