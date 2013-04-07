@@ -132,6 +132,16 @@
 		}, true);
 	}
 
+	function T( cb, tt ) {
+		var t = tt.t;
+		return function( a, b, c ) {
+			if ( t === tt.t ) {
+				++tt.t;
+				cb( a, b, c );
+			}
+		};
+	}
+
 	isArray = Array.isArray || function( val ) {
 		return !!val && toStr.call( val ) === "[object Array]";
 	};
@@ -168,8 +178,8 @@
 	P.defer = defer;
 	function defer() {
 		var pending = [],
+			tt = {t: 0},
 			fulfilled = false,
-			postponed = 0,
 			value;
 
 		function then( onFulfilled, onRejected, alt, sync ) {
@@ -181,6 +191,7 @@
 				if ( typeof func === "function" ) {
 					try {
 						var res = func( value );
+
 					} catch ( ex ) {
 						def ? def.reject( ex ) : reportError( ex );
 						return;
@@ -212,47 +223,36 @@
 
 		function resolve( x, alt, ok ) {
 			if ( pending ) {
-				if ( postponed > 0 ) {
-					postponeResolution( x, alt, ok );
-					return;
-				}
 
 				if ( alt === ALT ) { // settle
 					fulfilled = !!ok;
 					value = x;
 					forEach( pending, runLater );
 					pending = null;
-					return;
-				}
 
-				if ( x instanceof Promise ) {
+				} else if ( x instanceof Promise ) {
 					x.then( fulfill, reject, ALT, true );
-					return;
-				}
 
-				var then, type = typeof x;
+				} else if ( x === Object(x) ) {
+					runLater(function() {
+						try {
+							var then = x.then;
 
-				if ( type === "object" && x !== null || type === "function" ) {
-					if ( postponed >= 0 ) {
-						postponeResolution( x );
-						return;
-					}
+							if ( typeof then === "function" ) {
+								then.call( x, T(resolve, tt), T(reject, tt) );
 
-					try {
-						then = x.then;
+							} else {
+								fulfill( x );
+							}
 
-						if ( typeof then === "function" ) {
-							then.call( x, resolve, reject );
-							return;
+						} catch ( ex ) {
+							reject( ex );
 						}
+					});
 
-					} catch ( ex ) {
-						reject( ex );
-						return;
-					}
+				} else {
+					fulfill( x );
 				}
-
-				fulfill( x );
 			}
 		}
 
@@ -264,19 +264,10 @@
 			resolve( reson, ALT, false );
 		}
 
-		function postponeResolution( x, alt, ok ) {
-			++postponed;
-			runLater(function() {
-				postponed = ~( postponed - 1 );
-				resolve( x, alt, ok );
-				postponed = ~postponed;
-			});
-		}
-
 		return {
 			promise: new Promise( then ),
-			resolve: resolve,
-			reject: reject
+			resolve: T(resolve, tt),
+			reject: T(reject, tt)
 		};
 	}
 
