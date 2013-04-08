@@ -21,7 +21,7 @@
     "promises"
   ],
   "devDependencies": {
-    "promises-aplus-tests": "*",
-    "uglify-js": "*"
+    "promises-aplus-tests": "1.*",
+    "uglify-js": "2.*"
   }
 }
