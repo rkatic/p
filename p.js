@@ -31,7 +31,7 @@
 		toStr = head.toString,
 		isArray,
 
-		ALT = {};
+		CHECK = {};
 
 	function onTick() {
 		--pendingTicks;
@@ -135,16 +135,6 @@
 		}, true);
 	}
 
-	function T( cb, tt ) {
-		var t = tt.t;
-		return function( a, b, c ) {
-			if ( t === tt.t ) {
-				++tt.t;
-				cb( a, b, c );
-			}
-		};
-	}
-
 	isArray = Array.isArray || function( val ) {
 		return !!val && toStr.call( val ) === "[object Array]";
 	};
@@ -178,15 +168,28 @@
 		return def.promise;
 	}
 
+	var RESOLVE = 0;
+	var FULFILL = 1;
+	var REJECT  = 2;
+
 	P.defer = defer;
 	function defer() {
 		var pending = [],
-			tt = {t: 0},
+			validToken = 0,
+			testToken = 0,
 			fulfilled = false,
 			value;
 
-		function then( onFulfilled, onRejected, alt, sync ) {
-			var def = alt === ALT ? void 0 : defer();
+		function H( s ) {
+			var token = validToken;
+			return function( x ) {
+				testToken = token;
+				resolve( x, s && CHECK, s === 2 && CHECK );
+			};
+		}
+
+		function then( onFulfilled, onRejected, _done, _sync ) {
+			var def = _done === CHECK ? void 0 : defer();
 
 			function onSettled() {
 				var func = fulfilled ? onFulfilled : onRejected;
@@ -203,7 +206,7 @@
 					def && def.resolve( res );
 
 				} else if ( def ) {
-					def.resolve( value, ALT, fulfilled );
+					def.resolve( value, CHECK, fulfilled || CHECK );
 
 				} else if ( !fulfilled ) {
 					reportError( value );
@@ -213,7 +216,7 @@
 			if ( pending ) {
 				pending.push( onSettled );
 
-			} else if ( !def && sync ) {
+			} else if ( _sync === CHECK ) {
 				onSettled();
 
 			} else {
@@ -224,53 +227,47 @@
 		}
 
 
-		function resolve( x, alt, ok ) {
-			if ( pending ) {
-
-				if ( alt === ALT ) { // settle
-					fulfilled = !!ok;
-					value = x;
-					forEach( pending, runLater );
-					pending = null;
-
-				} else if ( x instanceof Promise ) {
-					x.then( fulfill, reject, ALT, true );
-
-				} else if ( x === Object(x) ) {
-					runLater(function() {
-						try {
-							var then = x.then;
-
-							if ( typeof then === "function" ) {
-								then.call( x, T(resolve, tt), T(reject, tt) );
-
-							} else {
-								fulfill( x );
-							}
-
-						} catch ( ex ) {
-							reject( ex );
-						}
-					});
-
-				} else {
-					fulfill( x );
-				}
+		function resolve( x, _settle, _reject ) {
+			if ( testToken !== validToken ) {
+				return;
 			}
-		}
 
-		function fulfill( value ) {
-			resolve( value, ALT, true );
-		}
+			++validToken;
 
-		function reject( reson ) {
-			resolve( reson, ALT, false );
+			if ( _settle === CHECK || x !== Object(x) ) {
+				fulfilled = _reject !== CHECK;
+				value = x;
+				forEach( pending, runLater );
+				pending = null;
+				return;
+			}
+
+			if ( x instanceof Promise ) {
+				x.then( H(FULFILL), H(REJECT), CHECK, CHECK );
+				return;
+			}
+
+			runLater(function() {
+				try {
+					var then = x.then;
+
+					if ( typeof then === "function" ) {
+						then.call( x, H(RESOLVE), H(REJECT) );
+
+					} else {
+						H(FULFILL)( x );
+					}
+
+				} catch ( ex ) {
+					H(REJECT)( ex );
+				}
+			});
 		}
 
 		return {
 			promise: new Promise( then ),
-			resolve: T(resolve, tt),
-			reject: T(reject, tt)
+			resolve: resolve,
+			reject: H(REJECT)
 		};
 	}
 
@@ -280,7 +277,7 @@
 	}
 
 	Promise.prototype.done = function( cb, eb ) {
-		this.then( cb, eb, ALT );
+		this.then( cb, eb, CHECK );
 	};
 
 	Promise.prototype.spread = function( cb, eb ) {
@@ -303,7 +300,7 @@
 		}, function( error ) {
 			clearTimeout( timeoutId );
 			def.reject( error );
-		}, ALT, true);
+		}, CHECK, CHECK);
 
 		return def.promise;
 	};
@@ -328,7 +325,7 @@
 				if ( --waiting === 0 ) {
 					def.resolve( promises );
 				}
-			}, def.reject, ALT );
+			}, def.reject, CHECK );
 		});
 		if ( waiting === 0 ) {
 			def.resolve( promises );
