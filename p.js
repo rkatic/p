@@ -316,7 +316,7 @@
 
 	P.all = all;
 	function all( promises ) {
-		var waiting = 0;
+		var waiting = 1;
 		var def = defer();
 		each( promises, function( promise, index ) {
 			++waiting;
@@ -325,9 +325,9 @@
 				if ( --waiting === 0 ) {
 					def.resolve( promises );
 				}
-			}, def.reject, CHECK );
+			}, def.reject, CHECK, CHECK );
 		});
-		if ( waiting === 0 ) {
+		if ( --waiting === 0 ) {
 			def.resolve( promises );
 		}
 		return def.promise;
