@@ -29,28 +29,18 @@
 		wow = ot(typeof window) && window || ot(typeof worker) && worker,
 
 		toStr = head.toString,
-		isArray,
-
-		CHECK = {};
+		isArray;
 
 	function onTick() {
 		--pendingTicks;
-		if ( head.n ) {
-			if ( !pendingTicks && head.n.n ) {
-				// In case of multiple tasks, ensure at least one successive tick
-				// to handle remaining task in case one throws, even if specified it will not.
-				++pendingTicks;
-				requestTick( onTick, 0 );
+		while ( head.n ) {
+			head = head.n;
+			if ( head.w ) {
+				--neededTicks;
 			}
-			do {
-				head = head.n;
-				if ( head.w ) {
-					--neededTicks;
-				}
-				var f = head.f;
-				head.f = null;
-				f();
-			} while ( head.n )
+			var f = head.f;
+			head.f = null;
+			f();
 		}
 		nextNeedsTick = true;
 	}
@@ -168,6 +158,7 @@
 		return def.promise;
 	}
 
+	var CHECK = {};
 	var RESOLVE = 0;
 	var FULFILL = 1;
 	var REJECT  = 2;
@@ -180,11 +171,11 @@
 			fulfilled = false,
 			value;
 
-		function H( s ) {
+		function H( action ) {
 			var token = validToken;
 			return function( x ) {
 				testToken = token;
-				resolve( x, s && CHECK, s === 2 && CHECK );
+				resolve( x, CHECK, action );
 			};
 		}
 
@@ -206,7 +197,7 @@
 					def && def.resolve( res );
 
 				} else if ( def ) {
-					def.resolve( value, CHECK, fulfilled || CHECK );
+					def.resolve( value, CHECK, fulfilled ? FULFILL : REJECT );
 
 				} else if ( !fulfilled ) {
 					reportError( value );
@@ -227,15 +218,16 @@
 		}
 
 
-		function resolve( x, _settle, _reject ) {
+		function resolve( x, _check, _action ) {
 			if ( testToken !== validToken ) {
 				return;
 			}
 
 			++validToken;
+			_action = _check === CHECK && _action;
 
-			if ( _settle === CHECK || x !== Object(x) ) {
-				fulfilled = _reject !== CHECK;
+			if ( _action || x !== Object(x) ) {
+				fulfilled = _action !== REJECT;
 				value = x;
 				forEach( pending, runLater );
 				pending = null;
@@ -248,6 +240,8 @@
 			}
 
 			runLater(function() {
+				var action = 0;
+
 				try {
 					var then = x.then;
 
@@ -255,11 +249,17 @@
 						then.call( x, H(RESOLVE), H(REJECT) );
 
 					} else {
-						H(FULFILL)( x );
+						action = FULFILL;
 					}
 
 				} catch ( ex ) {
-					H(REJECT)( ex );
+					x = ex;
+					action = REJECT;
+				}
+
+				if ( action ) {
+					testToken = validToken;
+					resolve( x, CHECK, action );
 				}
 			});
 		}
@@ -342,8 +342,6 @@
 	};
 
 	P._each = each;
-
-	//P.runLater = runLater;
 
 	return P;
 });
