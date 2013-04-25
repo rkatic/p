@@ -16,14 +16,12 @@
 
 	var
 		// linked list with head node - used as a queue of tasks
-		// f: task, w: needed a tick, n: next node
-		head = { f: null, w: false, n: null }, tail = head,
-
-		// vars for tick re-usage
-		nextNeedsTick = true, pendingTicks = 0, neededTicks = 0,
+		// p: pre-promise, f: task, n: next node
+		head = { p: null, f: null, n: null }, tail = head,
 
 		channel, // MessageChannel
-		requestTick, // requestTick( onTick, 0 ) is the only valid usage!
+		requestTick,
+		ticking = false,
 
 		// window or worker
 		wow = ot(typeof window) && window || ot(typeof worker) && worker,
@@ -32,26 +30,27 @@
 		isArray;
 
 	function onTick() {
-		--pendingTicks;
 		while ( head.n ) {
 			head = head.n;
-			if ( head.w ) {
-				--neededTicks;
-			}
 			var f = head.f;
 			head.f = null;
-			f();
+			var p = head.p;
+			if ( p ) {
+				head.p = null;
+				Settle( f, p._state, p._value );
+			} else {
+				f();
+			}
 		}
-		nextNeedsTick = true;
+		ticking = false;
 	}
 
-	var runLater = function( f, couldThrow ) {
-		if ( nextNeedsTick && ++neededTicks > pendingTicks ) {
-			++pendingTicks;
+	var runLater = function( f, node ) {
+		tail = tail.n = node || { p: null, f: f, n: null };
+		if ( !ticking ) {
+			ticking = true;
 			requestTick( onTick, 0 );
-		};
-		tail = tail.n = { f: f, w: nextNeedsTick, n: null };
-		nextNeedsTick = couldThrow === true;
+		}
 	};
 
 	function ot( type ) {
@@ -73,7 +72,6 @@
 
 	} else if ( ot(typeof process) && process && ft(typeof process.nextTick) ) {
 		requestTick = process.nextTick;
-		//runLater = process.nextTick;
 
 	} else if ( ft(typeof MessageChannel) ) {
 		channel = new MessageChannel();
@@ -115,15 +113,6 @@
 
 	//__________________________________________________________________________
 
-	function reportError( error ) {
-		runLater(function() {
-			if ( P.onerror ) {
-				P.onerror( error );
-			} else {
-				throw error;
-			}
-		}, true);
-	}
 
 	isArray = Array.isArray || function( val ) {
 		return !!val && toStr.call( val ) === "[object Array]";
@@ -148,136 +137,173 @@
 		}
 	}
 
-	function P( val ) {
-		if ( val instanceof Promise ) {
-			return val;
-		}
+	function reportError( error ) {
+		try {
+			if ( P.onerror ) {
+				P.onerror( error );
+			} else {
+				throw error;
+			}
 
-		var def = defer();
-		def.resolve( val );
-		return def.promise;
+		} catch ( e ) {
+			setTimeout(function() {
+				throw e;
+			}, 0);
+		}
 	}
 
-	var CHECK = {};
-	var RESOLVE = 0;
-	var FULFILL = 1;
-	var REJECT  = 2;
+	var PENDING = 0;
+	var FULFILLED = 1;
+	var REJECTED = 2;
 
-	P.defer = defer;
-	function defer() {
-		var pending = [],
-			validToken = 0,
-			testToken = 0,
-			fulfilled = false,
-			value;
+	function P( x ) {
+		return x instanceof Promise ?
+			x :
+			Resolve( new Promise(), x );
+	}
 
-		function H( action ) {
-			var token = validToken;
-			return function( x ) {
-				testToken = token;
-				resolve( x, CHECK, action );
-			};
+	function Settle( p, state, value ) {
+		if ( p._state ) {
+			return p;
 		}
 
-		function then( onFulfilled, onRejected, _done, _sync ) {
-			var def = _done === CHECK ? void 0 : defer();
+		p._state = state;
+		p._value = value;
 
-			function onSettled() {
-				var func = fulfilled ? onFulfilled : onRejected;
+		if ( p.n ) {
+			runLater( null, p.n );
+			p._tail = p.n = null;
+		}
 
-				if ( typeof func === "function" ) {
-					try {
-						var res = func( value );
+		return p;
+	}
 
-					} catch ( ex ) {
-						def ? def.reject( ex ) : reportError( ex );
-						return;
-					}
+	function Append( p, f ) {
+		p._tail = p._tail.n = { p: (f instanceof Promise) && p, f: f, n: null };
+	}
 
-					def && def.resolve( res );
+	function Resolve( p, x ) {
+		if ( p._state ) {
+			return p;
+		}
 
-				} else if ( def ) {
-					def.resolve( value, CHECK, fulfilled ? FULFILL : REJECT );
-
-				} else if ( !fulfilled ) {
-					reportError( value );
-				}
-			}
-
-			if ( pending ) {
-				pending.push( onSettled );
-
-			} else if ( _sync === CHECK ) {
-				onSettled();
+		if ( x instanceof Promise ) {
+			if ( x._state ) {
+				Settle( p, x._state, x._value );
 
 			} else {
-				runLater( onSettled );
+				Append( x, p );
 			}
 
-			return def && def.promise;
-		}
+		} else if ( x !== Object(x) ) {
+			Settle( p, FULFILLED, x );
 
-
-		function resolve( x, _check, _action ) {
-			if ( testToken !== validToken ) {
-				return;
-			}
-
-			++validToken;
-			_action = _check === CHECK && _action;
-
-			if ( _action || x !== Object(x) ) {
-				fulfilled = _action !== REJECT;
-				value = x;
-				forEach( pending, runLater );
-				pending = null;
-				return;
-			}
-
-			if ( x instanceof Promise ) {
-				x.then( H(FULFILL), H(REJECT), CHECK, CHECK );
-				return;
-			}
-
+		} else {
 			runLater(function() {
-				var action = 0;
-
 				try {
 					var then = x.then;
 
 					if ( typeof then === "function" ) {
-						then.call( x, H(RESOLVE), H(REJECT) );
+						var r = resolverFor( p, x );
+						then.call( x, r.resolve, r.reject );
 
 					} else {
-						action = FULFILL;
+						Settle( p, FULFILLED, x );
 					}
 
-				} catch ( ex ) {
-					x = ex;
-					action = REJECT;
-				}
-
-				if ( action ) {
-					testToken = validToken;
-					resolve( x, CHECK, action );
+				} catch ( e ) {
+					Settle( p, REJECTED, e );
 				}
 			});
 		}
 
+		return p;
+	}
+
+	function resolverFor( promise, x ) {
+		var done = false;
+
 		return {
-			promise: new Promise( then ),
-			resolve: resolve,
-			reject: H(REJECT)
+			promise: promise,
+
+			resolve: function( y ) {
+				if ( !done ) {
+					done = true;
+
+					if ( x && x === y ) {
+						Settle( promise, FULFILLED, y );
+
+					} else {
+						Resolve( promise, y );
+					}
+				}
+			},
+
+			reject: function( reason ) {
+				if ( !done ) {
+					done = true;
+					Settle( promise, REJECTED, reason );
+				}
+			}
 		};
 	}
 
-
-	function Promise( then ) {
-		this.then = then;
+	P.defer = defer;
+	function defer() {
+		return resolverFor( new Promise() );
 	}
 
+	function Promise() {
+		this._state = 0;
+		this._value = void 0;
+		this.n = null;
+		this._tail = this;
+	}
+
+	Promise.prototype.then = function( onFulfilled, onRejected ) {
+		var cb = typeof onFulfilled === "function" ? onFulfilled : null;
+		var eb = typeof onRejected === "function" ? onRejected : null;
+
+		var p = this;
+		var p2 = new Promise();
+
+		function onSettled() {
+			var x, func = p._state === FULFILLED ? cb : eb;
+
+			if ( func !== null ) {
+				try {
+					x = func( p._value );
+
+				} catch ( e ) {
+					Settle( p2, REJECTED, e );
+					return;
+				}
+
+				Resolve( p2, x );
+
+			} else {
+				Settle( p2, p._state, p._value );
+			}
+		}
+
+		if ( p._state === PENDING ) {
+			Append( p, onSettled );
+
+		} else {
+			runLater( onSettled );
+		}
+
+		return p2;
+	};
+
 	Promise.prototype.done = function( cb, eb ) {
-		this.then( cb, eb, CHECK );
+		var p = this;
+
+		if ( cb || eb ) {
+			p = p.then( cb, eb );
+		}
+
+		p.then( null, reportError );
 	};
 
 	Promise.prototype.spread = function( cb, eb ) {
@@ -288,49 +314,57 @@
 		}, eb);
 	};
 
-	Promise.prototype.timeout = function( ms ) {
-		var def = defer();
-		var timeoutId = setTimeout(function() {
-			def.reject( new Error("Timed out after " + ms + " ms") );
-		}, ms);
+	Promise.prototype.timeout = function( ms, msg ) {
+		var p = this;
+		var p2 = new Promise();
 
-		this.then(function( value ) {
-			clearTimeout( timeoutId );
-			def.resolve( value );
-		}, function( error ) {
-			clearTimeout( timeoutId );
-			def.reject( error );
-		}, CHECK, CHECK);
+		if ( p._state !== PENDING ) {
+			Settle( p2, p._state, p._value );
 
-		return def.promise;
+		} else {
+			var timeoutId = setTimeout(function() {
+				Settle( p2, REJECTED,
+					new Error(msg || "Timed out after " + ms + " ms") );
+			}, ms);
+
+			Append(p, function() {
+				clearTimeout( timeoutId );
+				Settle( p2, p._state, p._value );
+			});
+		}
+
+		return p2;
 	};
 
 	Promise.prototype.delay = function( ms ) {
-		var self = this;
-		var def = defer();
+		var p = this;
+		var p2 = new Promise();
 		setTimeout(function() {
-			def.resolve( self );
+			Resolve( p2, p );
 		}, ms);
-		return def.promise;
+		return p2;
 	};
 
 	P.all = all;
 	function all( promises ) {
-		var waiting = 1;
-		var def = defer();
+		var waiting = 0;
+		var d = defer();
 		each( promises, function( promise, index ) {
-			++waiting;
-			P( promise ).then(function( value ) {
-				promises[ index ] = value;
-				if ( --waiting === 0 ) {
-					def.resolve( promises );
-				}
-			}, def.reject, CHECK, CHECK );
+			var p = P( promise );
+			if ( p._state === PENDING ) {
+				++waiting;
+				p.then(function( value ) {
+					promises[ index ] = value;
+					if ( --waiting === 0 ) {
+						d.resolve( promises );
+					}
+				}, d.reject);
+			}
 		});
-		if ( --waiting === 0 ) {
-			def.resolve( promises );
+		if ( waiting === 0 ) {
+			d.resolve( promises );
 		}
-		return def.promise;
+		return d.promise;
 	}
 
 	P.onerror = null;
@@ -338,7 +372,16 @@
 	P.prototype = Promise.prototype;
 
 	P.nextTick = function( f ) {
-		runLater( f, true );
+		runLater(function() {
+			try {
+				f();
+
+			} catch ( ex ) {
+				setTimeout(function() {
+					throw ex;
+				}, 0);
+			}
+		});
 	};
 
 	P._each = each;
