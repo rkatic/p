@@ -353,6 +353,9 @@
 						d.resolve( promises );
 					}
 				}, d.reject);
+
+			} else {
+				promises[ index ] = p._value;
 			}
 		});
 		if ( waiting === 0 ) {
