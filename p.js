@@ -15,18 +15,16 @@
 	"use strict";
 
 	var
-		// linked list with head node - used as a queue of tasks
-		// p: pre-promise, f: task, n: next node
-		head = { p: null, f: null, n: null }, tail = head,
+		head = { f: null, n: null }, tail = head,
+		running = false,
 
 		channel, // MessageChannel
-		requestTick,
-		ticking = false,
+		requestTick, // --> requestTick( onTick, 0 )
 
 		// window or worker
 		wow = ot(typeof window) && window || ot(typeof worker) && worker,
 
-		toStr = head.toString,
+		toStr = ({}).toString,
 		isArray;
 
 	function onTick() {
@@ -34,21 +32,15 @@
 			head = head.n;
 			var f = head.f;
 			head.f = null;
-			var p = head.p;
-			if ( p ) {
-				head.p = null;
-				Settle( f, p._state, p._value );
-			} else {
-				f();
-			}
+			f();
 		}
-		ticking = false;
+		running = false;
 	}
 
-	var runLater = function( f, node ) {
-		tail = tail.n = node || { p: null, f: f, n: null };
-		if ( !ticking ) {
-			ticking = true;
+	var runLater = function( f ) {
+		tail = tail.n = { f: f, n: null };
+		if ( !running ) {
+			running = true;
 			requestTick( onTick, 0 );
 		}
 	};
@@ -62,6 +54,7 @@
 	}
 
 	if ( ft(typeof setImmediate) ) {
+		//runLater = wow ?
 		requestTick = wow ?
 			function( cb ) {
 				wow.setImmediate( cb );
@@ -72,6 +65,7 @@
 
 	} else if ( ot(typeof process) && process && ft(typeof process.nextTick) ) {
 		requestTick = process.nextTick;
+		//runLater = process.nextTick;
 
 	} else if ( ft(typeof MessageChannel) ) {
 		channel = new MessageChannel();
@@ -170,16 +164,15 @@
 		p._state = state;
 		p._value = value;
 
-		if ( p.n ) {
-			runLater( null, p.n );
-			p._tail = p.n = null;
-		}
+		forEach( p._pending, runLater );
+		p._pending = null;
 
 		return p;
 	}
 
 	function Append( p, f ) {
-		p._tail = p._tail.n = { p: (f instanceof Promise) && p, f: f, n: null };
+		p._pending.push( f );
+		//p._tail = p._tail.n = { f: f, n: null };
 	}
 
 	function Resolve( p, x ) {
@@ -187,16 +180,18 @@
 			return p;
 		}
 
-		if ( x instanceof Promise ) {
+		if ( p === x || x !== Object(x) ) {
+			Settle( p, FULFILLED, x );
+
+		} else if ( x instanceof Promise ) {
 			if ( x._state ) {
 				Settle( p, x._state, x._value );
 
 			} else {
-				Append( x, p );
+				Append(x, function() {
+					Settle( p, x._state, x._value );
+				});
 			}
-
-		} else if ( x !== Object(x) ) {
-			Settle( p, FULFILLED, x );
 
 		} else {
 			runLater(function() {
@@ -256,8 +251,7 @@
 	function Promise() {
 		this._state = 0;
 		this._value = void 0;
-		this.n = null;
-		this._tail = this;
+		this._pending = [];
 	}
 
 	Promise.prototype.then = function( onFulfilled, onRejected ) {
