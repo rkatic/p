@@ -180,10 +180,7 @@
 			return p;
 		}
 
-		if ( p === x || x !== Object(x) ) {
-			Settle( p, FULFILLED, x );
-
-		} else if ( x instanceof Promise ) {
+		if ( x instanceof Promise ) {
 			if ( x._state ) {
 				Settle( p, x._state, x._value );
 
@@ -192,6 +189,9 @@
 					Settle( p, x._state, x._value );
 				});
 			}
+
+		} else if ( x !== Object(x) ) {
+			Settle( p, FULFILLED, x );
 
 		} else {
 			runLater(function() {
