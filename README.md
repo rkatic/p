@@ -1,5 +1,10 @@
 [![Build Status](https://travis-ci.org/rkatic/p.png?branch=master)](https://travis-ci.org/rkatic/p)
 
+<a href="http://promises-aplus.github.com/promises-spec">
+    <img src="http://promises-aplus.github.com/promises-spec/assets/logo-small.png"
+         alt="Promises/A+ logo" title="Promises/A+ 1.0 compliant" />
+</a>
+
 #P
 
 A simple Promises/A+ library.
@@ -8,7 +13,8 @@ A simple Promises/A+ library.
 - Passing the [Promises/A+ Compliance Test Suite](https://github.com/promises-aplus/promises-tests).
 - Cross-Browser, Node.js and RequireJS ready.
 - Small.
-- [Fast](http://jsperf.com/wqfwewefewrw).
+- Simple.
+- [Ultra Fast](http://jsperf.com/wqfwewefewrw/3).
 
 ##API
 
