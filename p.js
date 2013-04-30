@@ -63,7 +63,7 @@
 				setImmediate( cb );
 			};
 
-	} else if ( ot(typeof process) && process && ft(typeof process.nextTick) ) {
+	} else if ( ot(typeof process) && process && process.nextTick ) {
 		requestTick = process.nextTick;
 		//runLater = process.nextTick;
 
