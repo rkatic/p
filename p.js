@@ -366,8 +366,6 @@
 
 	P.onerror = null;
 
-	P.prototype = Promise.prototype;
-
 	P.nextTick = function( f ) {
 		runLater(function() {
 			try {
