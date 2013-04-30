@@ -300,6 +300,10 @@
 		p.then( null, reportError );
 	};
 
+	Promise.prototype.fail = function( eb ) {
+		return this.then( null, eb );
+	};
+
 	Promise.prototype.spread = function( cb, eb ) {
 		return this.then(cb && function( array ) {
 			return all( array ).then(function( values ) {
