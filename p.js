@@ -53,8 +53,10 @@
 		return type === "function";
 	}
 
-	if ( ft(typeof setImmediate) ) {
-		//runLater = wow ?
+	if ( ot(typeof process) && process && process.nextTick ) {
+		requestTick = process.nextTick;
+
+	} else if ( ft(typeof setImmediate) ) {
 		requestTick = wow ?
 			function( cb ) {
 				wow.setImmediate( cb );
@@ -62,10 +64,6 @@
 			function( cb ) {
 				setImmediate( cb );
 			};
-
-	} else if ( ot(typeof process) && process && process.nextTick ) {
-		requestTick = process.nextTick;
-		//runLater = process.nextTick;
 
 	} else if ( ft(typeof MessageChannel) ) {
 		channel = new MessageChannel();
