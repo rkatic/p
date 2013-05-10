@@ -164,7 +164,9 @@
 		p._state = state;
 		p._value = value;
 
-		forEach( p._pending, runLater );
+		if ( p._pending.length > 0 ) {
+			forEach( p._pending, runLater );
+		}
 		p._pending = null;
 
 		return p;
