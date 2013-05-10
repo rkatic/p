@@ -343,6 +343,40 @@
 		return p2;
 	};
 
+	Promise.prototype.inspect = function() {
+		switch ( this._state ) {
+			case PENDING:   return { state: "pending" };
+			case FULFILLED: return { state: "fulfilled", value: this._value };
+			case REJECTED:  return { state: "rejected", reason: this._value };
+			default: throw new TypeError("invalid state");
+		}
+	};
+
+	P.allSettled = allSettled;
+	function allSettled( promises ) {
+		var waiting = 0;
+		var finalPromise = new Promise();
+		var results = [];
+		each( promises, function( promise, index ) {
+			var p = P( promise );
+			if ( p._state === PENDING ) {
+				++waiting;
+				Append(p, function() {
+					results[ index ] = p.inspect();
+					if ( --waiting === 0 ) {
+						Settle( finalPromise, FULFILLED, results );
+					}
+				});
+			} else {
+				results[ index ] = p.inspect();
+			}
+		});
+		if ( waiting === 0 ) {
+			Settle( finalPromise, FULFILLED, results );
+		}
+		return finalPromise;
+	}
+
 	P.all = all;
 	function all( promises ) {
 		var waiting = 0;
