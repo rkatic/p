@@ -23,6 +23,7 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API with few **
 - `P(val)`
 - `P.defer()`
 - `P.all(promises)` (array **or object** of promises)
+- `P.allSettled(promises)` (array **or object** of promises)
 - `P.onerror`
 - `P.nextTick(callback)`
 - `deferred.promise`
@@ -31,5 +32,6 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API with few **
 - `promise.then(onFulfilled, onRejected)`
 - `promise.done(onFulfilled, onRejected)`
 - `promise.spread(onFulfilled, onRejected)`
-- `promise.timeout(ms)`
+- `promise.timeout(ms, optionalTimeoutMsg)`
 - `promise.delay(ms)`
+- `promise.inspect()`
