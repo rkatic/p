@@ -170,7 +170,7 @@
 		return p;
 	}
 
-	function Append( p, f ) {
+	function OnSettled( p, f ) {
 		p._pending.push( f );
 		//p._tail = p._tail.n = { f: f, n: null };
 	}
@@ -185,7 +185,7 @@
 				Settle( p, x._state, x._value );
 
 			} else {
-				Append(x, function() {
+				OnSettled(x, function() {
 					Settle( p, x._state, x._value );
 				});
 			}
@@ -281,7 +281,7 @@
 		}
 
 		if ( p._state === PENDING ) {
-			Append( p, onSettled );
+			OnSettled( p, onSettled );
 
 		} else {
 			runLater( onSettled );
@@ -325,7 +325,7 @@
 					new Error(msg || "Timed out after " + ms + " ms") );
 			}, ms);
 
-			Append(p, function() {
+			OnSettled(p, function() {
 				clearTimeout( timeoutId );
 				Settle( p2, p._state, p._value );
 			});
@@ -361,7 +361,7 @@
 			var p = P( promise );
 			if ( p._state === PENDING ) {
 				++waiting;
-				Append(p, function() {
+				OnSettled(p, function() {
 					results[ index ] = p.inspect();
 					if ( --waiting === 0 ) {
 						Settle( finalPromise, FULFILLED, results );
