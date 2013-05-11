@@ -24,6 +24,7 @@
 		// window or worker
 		wow = ot(typeof window) && window || ot(typeof worker) && worker,
 
+		// TODO: Remove in next version.
 		toStr = ({}).toString,
 		isArray;
 
@@ -106,6 +107,7 @@
 	//__________________________________________________________________________
 
 
+	// TODO: Remove in next version.
 	isArray = Array.isArray || function( val ) {
 		return !!val && toStr.call( val ) === "[object Array]";
 	};
@@ -118,6 +120,7 @@
 		}
 	}
 
+	// TODO: Remove in next version.
 	function each( obj, cb ) {
 		if ( isArray(obj) ) {
 			forEach( obj, cb );
@@ -357,6 +360,7 @@
 		var waiting = 0;
 		var finalPromise = new Promise();
 		var results = [];
+		// TODO: Replace `each` with `forEach` in next version.
 		each( promises, function( promise, index ) {
 			var p = P( promise );
 			if ( p._state === PENDING ) {
@@ -381,6 +385,7 @@
 	function all( promises ) {
 		var waiting = 0;
 		var d = defer();
+		// TODO: Replace `each` with `forEach` in next version.
 		each( promises, function( promise, index ) {
 			var p = P( promise );
 			if ( p._state === PENDING ) {
@@ -417,6 +422,7 @@
 		});
 	};
 
+	// TODO: Remove in next version.
 	P._each = each;
 
 	return P;
