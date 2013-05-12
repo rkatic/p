@@ -361,7 +361,7 @@
 	P.allSettled = valuesHandler( allSettled );
 	function allSettled( input, output ) {
 		var waiting = 0;
-		var outputPromise = new Promise();
+		var promise = new Promise();
 		forEach( input, function( x, index ) {
 			var p = P( x );
 			if ( p._state === PENDING ) {
@@ -369,7 +369,7 @@
 				OnSettled(p, function() {
 					output[ index ] = p.inspect();
 					if ( --waiting === 0 ) {
-						Settle( outputPromise, FULFILLED, output );
+						Settle( promise, FULFILLED, output );
 					}
 				});
 			} else {
@@ -377,9 +377,9 @@
 			}
 		});
 		if ( waiting === 0 ) {
-			Settle( outputPromise, FULFILLED, output );
+			Settle( promise, FULFILLED, output );
 		}
-		return outputPromise;
+		return promise;
 	}
 
 	P.all = valuesHandler( all );
