@@ -407,6 +407,15 @@
 		return d.promise;
 	}
 
+	P.promised = promised;
+	function promised( f ) {
+		return function() {
+			return all([this, all(arguments, [])], []).then(function( pair ) {
+				return apply.apply( f, pair );
+			});
+		};
+	}
+
 	P.onerror = null;
 
 	P.nextTick = function( f ) {
