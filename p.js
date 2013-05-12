@@ -296,7 +296,7 @@
 		return this.then(cb && function( array ) {
 			return all( array ).then(function( values ) {
 				return cb.apply( void 0, values );
-			});
+			}, eb);
 		}, eb);
 	};
 
@@ -340,52 +340,67 @@
 		}
 	};
 
-	P.allSettled = allSettled;
-	function allSettled( promises ) {
+	function valuesHandler( f ) {
+		return function( input, output ) {
+			if ( output && output !== Object(output) ) {
+				output = null;
+			}
+
+			return isArray( input ) ? f( input, output ) :
+				!output ? P( input ).then( f ) :
+					P( input ).then(function( values ) {
+						return f( values, output );
+					});
+		};
+	}
+
+	P.allSettled = valuesHandler( allSettled );
+	function allSettled( input, output ) {
+		output = output || [];
 		var waiting = 0;
 		var finalPromise = new Promise();
-		var results = [];
-		forEach( promises, function( promise, index ) {
-			var p = P( promise );
+		forEach( input, function( x, index ) {
+			var p = P( x );
 			if ( p._state === PENDING ) {
 				++waiting;
 				OnSettled(p, function() {
-					results[ index ] = p.inspect();
+					output[ index ] = p.inspect();
 					if ( --waiting === 0 ) {
-						Settle( finalPromise, FULFILLED, results );
+						Settle( finalPromise, FULFILLED, output );
 					}
 				});
 			} else {
-				results[ index ] = p.inspect();
+				output[ index ] = p.inspect();
 			}
 		});
 		if ( waiting === 0 ) {
-			Settle( finalPromise, FULFILLED, results );
+			Settle( finalPromise, FULFILLED, output );
 		}
 		return finalPromise;
 	}
 
-	P.all = all;
-	function all( promises ) {
+	P.all = valuesHandler( all );
+	function all( input, output ) {
+		output = output || [];
 		var waiting = 0;
 		var d = defer();
-		forEach( promises, function( promise, index ) {
-			var p = P( promise );
+		forEach( input, function( x, index ) {
+			var p = P( x );
 			if ( p._state === PENDING ) {
 				++waiting;
 				p.then(function( value ) {
-					promises[ index ] = value;
+					output[ index ] = value;
 					if ( --waiting === 0 ) {
-						d.resolve( promises );
+						d.resolve( output );
 					}
 				}, d.reject);
 
 			} else {
-				promises[ index ] = p._value;
+				output[ index ] = p._value;
 			}
 		});
 		if ( waiting === 0 ) {
-			d.resolve( promises );
+			d.resolve( output );
 		}
 		return d.promise;
 	}
