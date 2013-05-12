@@ -294,7 +294,7 @@
 
 	Promise.prototype.spread = function( cb, eb ) {
 		return this.then(cb && function( array ) {
-			return all( array ).then(function( values ) {
+			return all( array, [] ).then(function( values ) {
 				return cb.apply( void 0, values );
 			}, eb);
 		}, eb);
@@ -341,24 +341,22 @@
 	};
 
 	function valuesHandler( f ) {
-		return function( input, output ) {
-			if ( output && output !== Object(output) ) {
-				output = null;
-			}
+		function handleValues( values ) {
+			return isArray( values ) ?
+				f( values, [] ) :
+				P( values ).then(function( values ) {
+					return f( values, [] );
+				});
+		}
 
-			return isArray( input ) ? f( input, output ) :
-				!output ? P( input ).then( f ) :
-					P( input ).then(function( values ) {
-						return f( values, output );
-					});
-		};
+		handleValues._ = f;
+		return handleValues;
 	}
 
 	P.allSettled = valuesHandler( allSettled );
 	function allSettled( input, output ) {
-		output = output || [];
 		var waiting = 0;
-		var finalPromise = new Promise();
+		var outputPromise = new Promise();
 		forEach( input, function( x, index ) {
 			var p = P( x );
 			if ( p._state === PENDING ) {
@@ -366,7 +364,7 @@
 				OnSettled(p, function() {
 					output[ index ] = p.inspect();
 					if ( --waiting === 0 ) {
-						Settle( finalPromise, FULFILLED, output );
+						Settle( outputPromise, FULFILLED, output );
 					}
 				});
 			} else {
@@ -374,14 +372,13 @@
 			}
 		});
 		if ( waiting === 0 ) {
-			Settle( finalPromise, FULFILLED, output );
+			Settle( outputPromise, FULFILLED, output );
 		}
-		return finalPromise;
+		return outputPromise;
 	}
 
 	P.all = valuesHandler( all );
 	function all( input, output ) {
-		output = output || [];
 		var waiting = 0;
 		var d = defer();
 		forEach( input, function( x, index ) {
