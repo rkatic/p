@@ -410,8 +410,9 @@
 	P.promised = promised;
 	function promised( f ) {
 		return function() {
-			return all([this, all(arguments, [])], []).then(function( pair ) {
-				return apply.apply( f, pair );
+			var allArgs = all( arguments, [] );
+			return all( [this, allArgs], [] ).then(function( thisAndArgs ) {
+				return apply.apply( f, thisAndArgs );
 			});
 		};
 	}
