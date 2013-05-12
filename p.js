@@ -383,7 +383,10 @@
 		var d = defer();
 		forEach( input, function( x, index ) {
 			var p = P( x );
-			if ( p._state === PENDING ) {
+			if ( p._state === FULFILLED ) {
+				output[ index ] = p._value;
+
+			} else {
 				++waiting;
 				p.then(function( value ) {
 					output[ index ] = value;
@@ -391,9 +394,6 @@
 						d.resolve( output );
 					}
 				}, d.reject);
-
-			} else {
-				output[ index ] = p._value;
 			}
 		});
 		if ( waiting === 0 ) {
