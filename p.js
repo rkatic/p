@@ -342,6 +342,8 @@
 
 	function valuesHandler( f ) {
 		function handleValues( values ) {
+			// Arrays are never considered thenables here, which isn't ideal,
+			// but I prefer to speed up instead of supporting such silly cases.
 			return isArray( values ) ?
 				f( values, [] ) :
 				P( values ).then(function( values ) {
