@@ -24,9 +24,6 @@
 		// window or worker
 		wow = ot(typeof window) && window || ot(typeof worker) && worker,
 
-		toStr = ({}).toString,
-		isArray,
-
 		call = ot.call,
 		apply = ot.apply;
 
@@ -108,9 +105,6 @@
 
 	//__________________________________________________________________________
 
-	isArray = Array.isArray || function( val ) {
-		return !!val && toStr.call( val ) === "[object Array]";
-	};
 
 	function forEach( arr, cb ) {
 		for ( var i = 0, l = arr.length; i < l; ++i ) {
@@ -344,14 +338,12 @@
 	};
 
 	function valuesHandler( f ) {
+		function onFulfilled( values ) {
+			return f( values, [] );
+		}
+
 		function handleValues( values ) {
-			// Arrays are never considered thenables here, which isn't ideal,
-			// but I prefer to speed up instead of supporting such silly cases.
-			return isArray( values ) ?
-				f( values, [] ) :
-				P( values ).then(function( values ) {
-					return f( values, [] );
-				});
+			return P( values ).then( onFulfilled );
 		}
 
 		handleValues._ = f;
