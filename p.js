@@ -25,7 +25,10 @@
 		wow = ot(typeof window) && window || ot(typeof worker) && worker,
 
 		toStr = ({}).toString,
-		isArray;
+		isArray,
+
+		call = ot.call,
+		apply = ot.apply;
 
 	function onTick() {
 		while ( head.n ) {
@@ -188,7 +191,7 @@
 
 					if ( typeof then === "function" ) {
 						var r = resolverFor( p, x );
-						then.call( x, r.resolve, r.reject );
+						call.call( then, x, r.resolve, r.reject );
 
 					} else {
 						Settle( p, FULFILLED, x );
@@ -295,7 +298,7 @@
 	Promise.prototype.spread = function( cb, eb ) {
 		return this.then(cb && function( array ) {
 			return all( array, [] ).then(function( values ) {
-				return cb.apply( void 0, values );
+				return apply.call( cb, void 0, values );
 			}, eb);
 		}, eb);
 	};
