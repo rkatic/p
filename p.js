@@ -1,7 +1,7 @@
 /*!
  * Copyright 2013 Robert Katić
  * Released under the MIT license
- * 
+ * https://github.com/rkatic/p/blob/master/LICENSE
  */
 ;(function( factory ){
 	// CommonJS
