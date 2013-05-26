@@ -1,3 +1,8 @@
+/*!
+ * Copyright 2013 Robert Katić
+ * Released under the MIT license
+ * 
+ */
 ;(function( factory ){
 	// CommonJS
 	if ( typeof module !== "undefined" && module && module.exports ) {
