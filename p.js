@@ -171,7 +171,10 @@
 		}
 
 		if ( x instanceof Promise ) {
-			if ( x._state ) {
+			if ( x === p ) {
+				Settle( p, REJECTED, new TypeError("You can't resolve a promise with itself") );
+
+			} else if ( x._state ) {
 				Settle( p, x._state, x._value );
 
 			} else {
