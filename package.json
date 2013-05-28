@@ -14,13 +14,17 @@
   "main": "p.js",
   "scripts": {
     "posttest": "uglifyjs p.js -o p.min.js -m",
-    "test": "promises-aplus-tests test/adapter"
+    "test-own": "mocha -R spec -s 100 test/test.js",
+    "test-aplus": "promises-aplus-tests test/adapter",
+    "test": "promises-aplus-tests test/adapter --reporter dot && mocha -s 200 test/test.js"
   },
   "keywords": [
     "promise",
     "promises"
   ],
   "devDependencies": {
+    "mocha": "1.x.x",
+    "expect.js" : "0.2.x",
     "promises-aplus-tests": "~1",
     "uglify-js": "~2"
   }
