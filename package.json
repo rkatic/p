@@ -20,7 +20,10 @@
   },
   "keywords": [
     "promise",
-    "promises"
+    "promises",
+    "promises-aplus",
+    "browser",
+    "node"
   ],
   "devDependencies": {
     "mocha": "1.x.x",
