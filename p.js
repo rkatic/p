@@ -188,11 +188,12 @@
 
 		} else {
 			runLater(function() {
+				var r = resolverFor( p, x );
+
 				try {
 					var then = x.then;
 
 					if ( typeof then === "function" ) {
-						var r = resolverFor( p, x );
 						call.call( then, x, r.resolve, r.reject );
 
 					} else {
@@ -200,7 +201,7 @@
 					}
 
 				} catch ( e ) {
-					Settle( p, REJECTED, e );
+					r.reject( e );
 				}
 			});
 		}
