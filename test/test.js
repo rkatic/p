@@ -74,11 +74,14 @@ describe("P function", function() {
 		expect( P(p) ).to.be( p );
 	});
 
-	it("should fulfill with input if not a promise", function() {
+	it("should fulfill with input if not a promise", function( done ) {
+		var c = 0;
 		forEach(VALUES, function( value ) {
-			var p = P( value );
-			p.then(null, function() {
-				fail();
+			++c;
+			P( value ).then(function() {
+				if ( --c === 0 ) {
+					done();
+				}
 			});
 		});
 	});
