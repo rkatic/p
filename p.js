@@ -54,14 +54,10 @@
 		return type === "object" || type === "function";
 	}
 
-	function ft( type ) {
-		return type === "function";
-	}
-
 	if ( ot(typeof process) && process && process.nextTick ) {
 		requestTick = process.nextTick;
 
-	} else if ( ft(typeof setImmediate) ) {
+	} else if ( ot(typeof setImmediate) ) {
 		requestTick = wow ?
 			function( cb ) {
 				wow.setImmediate( cb );
@@ -70,7 +66,7 @@
 				setImmediate( cb );
 			};
 
-	} else if ( ft(typeof MessageChannel) ) {
+	} else if ( ot(typeof MessageChannel) ) {
 		channel = new MessageChannel();
 		channel.port1.onmessage = onTick;
 		requestTick = function() {
