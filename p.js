@@ -184,7 +184,7 @@
 
 		} else {
 			runLater(function() {
-				var r = resolverFor( p, x );
+				var r = resolverFor( p );
 
 				try {
 					var then = x.then;
@@ -205,7 +205,7 @@
 		return p;
 	}
 
-	function resolverFor( promise, x ) {
+	function resolverFor( promise ) {
 		var done = false;
 
 		return {
@@ -214,13 +214,7 @@
 			resolve: function( y ) {
 				if ( !done ) {
 					done = true;
-
-					if ( x && x === y ) {
-						Settle( promise, FULFILLED, y );
-
-					} else {
-						Resolve( promise, y );
-					}
+					Resolve( promise, y );
 				}
 			},
 
