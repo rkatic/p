@@ -319,12 +319,15 @@
 	};
 
 	Promise.prototype.delay = function( ms ) {
-		var p = this;
-		var p2 = new Promise();
-		setTimeout(function() {
-			Resolve( p2, p );
-		}, ms);
-		return p2;
+		var d = defer();
+
+		this.then(function( value ) {
+			setTimeout(function() {
+				d.resolve( value );
+			}, ms);
+		}, d.reject);
+
+		return d.promise;
 	};
 
 	Promise.prototype.inspect = function() {

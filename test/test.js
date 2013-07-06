@@ -261,40 +261,26 @@ describe("delay", function() {
 		return promise;
 	});
 
-	it("should dealy rejection", function() {
+	it("should not dealy rejection", function() {
 		var d = P.defer();
 		d.reject(1);
 		var promise = d.promise.delay( 50 );
 
 		setTimeout(function() {
-			expect( promise.inspect().state ).to.be("pending");
+			expect( promise.inspect().state ).to.be("rejected");
 		}, 40);
 
 		return promise.then( fail, function(){} );
 	});
 
-	it("should delegate to faster passed promises, slowing them down", function() {
+	it("should delay after fulfillment", function() {
 		var p1 = P("foo").delay( 30 );
-		var p2 = p1.delay( 50 );
+		var p2 = p1.delay( 30 );
 
 		setTimeout(function() {
 			expect( p1.inspect().state ).to.be("fulfilled");
 			expect( p2.inspect().state ).to.be("pending");
-		}, 40);
-
-		return p2.then(function( value ) {
-			expect( value ).to.be("foo");
-		});
-	});
-
-	it("should delegate to slower passed promises, staying at their speed", function() {
-		var p1 = P("foo").delay( 70 );
-		var p2 = p1.delay( 50 );
-
-		setTimeout(function() {
-			expect( p1.inspect().state ).to.be("pending");
-			expect( p2.inspect().state ).to.be("pending");
-		}, 40);
+		}, 45);
 
 		return p2.then(function( value ) {
 			expect( value ).to.be("foo");
