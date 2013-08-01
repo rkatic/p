@@ -232,6 +232,11 @@
 		return resolverFor( new Promise() );
 	}
 
+	P.reject = reject;
+	function reject( reason ) {
+		return Settle( new Promise(), REJECTED, reason );
+	}
+
 	function Promise() {
 		this._state = 0;
 		this._value = void 0;
