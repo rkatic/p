@@ -110,6 +110,16 @@ describe("inspect", function() {
 	});
 });
 
+describe("reject", function() {
+
+	it("returns a rejected promise", function() {
+		var theReason = new Error("Rejection");
+		return P.reject(theReason).then( fail, function ( reason ) {
+			expect( reason ).to.be(theReason);
+		});
+	});
+});
+
 describe("all", function() {
 
 	it("resolves when passed an empty array", function() {
