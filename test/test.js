@@ -52,21 +52,28 @@ function fail() {
 
 var VALUES = ["", true, false, 0, 1, 2, -1, -2, {}, [], {x: 1}, [1,2,3], null, void 0, new Error()];
 VALUES[ VALUES.length + 1 ] = "sparse";
+VALUES.length++;
 
-function forEach( array, f ) {
+function map( array, f ) {
+	var array2 = new Array(array.length|0);
 	for ( var i = 0, l = array.length; i < l; ++i ) {
 		if ( i in array ) {
-			f( array[i], i, array );
+			array2[i] = f( array[i], i, array );
 		}
 	}
+	return array2;
+}
+
+function allValues( func ) {
+	return P.all( map(VALUES, func) );
 }
 
 describe("P function", function() {
 
 	it("should return a promise", function() {
-		forEach(VALUES, function( value ) {
+		map(VALUES, function( value ) {
 			expect( P(value).constructor.name ).to.be("Promise");
-		})
+		});
 	});
 
 	it("should return input itself if it is a promise", function() {
@@ -74,14 +81,10 @@ describe("P function", function() {
 		expect( P(p) ).to.be( p );
 	});
 
-	it("should fulfill with input if not a promise", function( done ) {
-		var c = 0;
-		forEach(VALUES, function( value ) {
-			++c;
-			P( value ).then(function() {
-				if ( --c === 0 ) {
-					done();
-				}
+	it("should fulfill with input if not a promise", function() {
+		return allValues(function( value ) {
+			return P( value ).then(function( fulfilledValue ) {
+				expect( fulfilledValue ).to.be( value );
 			});
 		});
 	});
@@ -90,20 +93,21 @@ describe("P function", function() {
 describe("inspect", function() {
 
 	it("on fulfillment", function() {
-		forEach(VALUES, function( value ) {
+		return allValues(function( value ) {
 			var p = P( value );
-			p.then(function() {
+			return p.then(function() {
 				expect( p.inspect() ).to.be.eql( {state: "fulfilled", value: value} );
 			});
 		});
 	});
 
 	it("on rejection", function() {
-		forEach(VALUES, function( reason ) {
+		return allValues(function( reason ) {
 			var d = P.defer();
-			expect( d.promise.inspect() ).to.be.eql( {state: "pending"} );
+			var p = d.promise;
+			expect( p.inspect() ).to.be.eql( {state: "pending"} );
 			d.reject( reason );
-			d.promise.then(function() {
+			return p.then( fail, function() {
 				expect( p.inspect() ).to.be.eql( {state: "rejected", reason: reason} );
 			});
 		});
@@ -113,9 +117,10 @@ describe("inspect", function() {
 describe("reject", function() {
 
 	it("returns a rejected promise", function() {
-		var theReason = new Error("Rejection");
-		return P.reject(theReason).then( fail, function ( reason ) {
-			expect( reason ).to.be(theReason);
+		return allValues(function( reason ) {
+			return P.reject( reason ).then( fail, function( rejectedReason ) {
+				expect( rejectedReason ).to.be( reason );
+			});
 		});
 	});
 });
