@@ -21,6 +21,7 @@ A simple Promises/A+ library.
 P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 
 - `P(val)`
+- `P.reject(reason)`
 - `P.defer()`
 - `P.all(promises)`
 - `P.allSettled(promises)`
