@@ -75,33 +75,6 @@
 
 	} else {
 		requestTick = setTimeout;
-
-		if ( wow && ot(typeof Image) && Image ) {
-			(function(){
-				var c = 0;
-
-				var requestTickViaImage = function( cb ) {
-					var img = new Image();
-					img.onerror = cb;
-					img.src = 'data:image/png,';
-				};
-
-				// Before using it, test if it works properly, with async dispatching.
-				try {
-					requestTickViaImage(function() {
-						if ( --c === 0 ) {
-							requestTick = requestTickViaImage;
-						}
-					});
-					++c;
-				} catch (e) {}
-
-				// Also use it only if faster then setTimeout.
-				c && setTimeout(function() {
-					c = 0;
-				}, 0);
-			})();
-		}
 	}
 
 	//__________________________________________________________________________
