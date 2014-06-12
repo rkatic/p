@@ -2,6 +2,8 @@
  * Copyright 2013 Robert Katić
  * Released under the MIT license
  * https://github.com/rkatic/p/blob/master/LICENSE
+ *
+ * High-priority-tasks code-portion based on https://github.com/kriskowal/asap
  */
 ;(function( factory ){
 	// CommonJS
@@ -20,88 +22,164 @@
 	"use strict";
 
 	var
+		isNodeJS = ot(typeof process) &&
+			({}).toString.call(process) === "[object process]",
+
+		hasSetImmediate = ot(typeof setImmediate),
+
 		head = { f: null, n: null }, tail = head,
-		running = false,
+		flushing = false,
 
-		channel, // MessageChannel
-		requestTick, // --> requestTick( onTick, 0 )
+		requestFlush =
+			isNodeJS && requestFlushForNodeJS ||
+			makeRequestCallFromMutationObserver( flush ) ||
+			makeRequestCallFromTimer( flush ),
 
-		// window or worker
-		wow = ot(typeof window) && window || ot(typeof worker) && worker,
+		pendingErrors = [],
+		requestErrorThrow = makeRequestCallFromTimer( throwFristError ),
+
+		wrapTask,
+		asapSafeTask,
+
+		domain,
 
 		call = ot.call,
 		apply = ot.apply;
-
-	function onTick() {
-		while ( head.n ) {
-			head = head.n;
-			var f = head.f;
-			head.f = null;
-			f();
-		}
-		running = false;
-	}
-
-	var runLater = function( f ) {
-		tail = tail.n = { f: f, n: null };
-		if ( !running ) {
-			running = true;
-			requestTick( onTick, 0 );
-		}
-	};
 
 	function ot( type ) {
 		return type === "object" || type === "function";
 	}
 
-	if ( ot(typeof process) && process && process.nextTick ) {
-		requestTick = process.nextTick;
+	function throwFristError() {
+		if ( pendingErrors.length ) {
+			throw pendingErrors.shift();
+		}
+	}
 
-	} else if ( ot(typeof setImmediate) ) {
-		requestTick = wow ?
-			function( cb ) {
-				wow.setImmediate( cb );
-			} :
-			function( cb ) {
-				setImmediate( cb );
+	function flush() {
+		while ( head.n ) {
+			head = head.n;
+			var f = head.f;
+			head.f = null;
+			f.call();
+		}
+		flushing = false;
+	}
+
+	var runLater = function( f ) {
+		tail = tail.n = { f: f, n: null };
+		if ( !flushing ) {
+			flushing = true;
+			requestFlush();
+		}
+	};
+
+	function requestFlushForNodeJS() {
+		var currentDomain = process.domain;
+
+		if ( currentDomain ) {
+			if ( !domain ) domain = (1,require)("domain");
+			domain.active = process.domain = null;
+		}
+
+		if ( flushing && hasSetImmediate ) {
+			setImmediate( flush );
+
+		} else {
+			process.nextTick( flush );
+		}
+
+		if ( currentDomain ) {
+			domain.active = process.domain = currentDomain;
+		}
+	}
+
+	function makeRequestCallFromMutationObserver( callback ) {
+		var observer =
+			ot(typeof MutationObserver) ? new MutationObserver( callback ) :
+			ot(typeof WebKitMutationObserver) ? new WebKitMutationObserver( callback ) :
+			null;
+
+		if ( !observer ) {
+			return null;
+		}
+
+		var toggle = 1;
+		var node = document.createTextNode("");
+		observer.observe( node, {characterData: true} );
+
+		return function() {
+			toggle = -toggle;
+			node.data = toggle;
+		};
+	}
+
+	function makeRequestCallFromTimer( callback ) {
+		return function() {
+			var timeoutHandle = setTimeout( handleTimer, 0 );
+			var intervalHandle = setInterval( handleTimer, 50 );
+
+			function handleTimer() {
+				clearTimeout( timeoutHandle );
+				clearInterval( intervalHandle );
+				callback();
+			}
+		};
+	}
+
+	if ( isNodeJS ) {
+		wrapTask = function( task ) {
+			var d = process.domain;
+
+			return function() {
+				if ( d ) {
+					if ( d._disabled ) return;
+					d.enter();
+				}
+
+				try {
+					task.call();
+
+				} finally {
+					requestFlush();
+				}
+
+				if ( d ) {
+					d.exit();
+				}
 			};
-
-	} else if ( ot(typeof MessageChannel) ) {
-		channel = new MessageChannel();
-		channel.port1.onmessage = onTick;
-		requestTick = function() {
-			channel.port2.postMessage(0);
 		};
 
-	} else {
-		requestTick = setTimeout;
-
-		if ( wow && ot(typeof Image) && Image ) {
-			(function(){
-				var c = 0;
-
-				var requestTickViaImage = function( cb ) {
-					var img = new Image();
-					img.onerror = cb;
-					img.src = 'data:image/png,';
-				};
-
-				// Before using it, test if it works properly, with async dispatching.
-				try {
-					requestTickViaImage(function() {
-						if ( --c === 0 ) {
-							requestTick = requestTickViaImage;
-						}
-					});
-					++c;
-				} catch (e) {}
-
-				// Also use it only if faster then setTimeout.
-				c && setTimeout(function() {
-					c = 0;
-				}, 0);
-			})();
+		asapSafeTask = function( task ) {
+			var d = process.domain;
+			runLater(!d ? task : function() {
+				if ( !d._disabled ) {
+					d.enter();
+					task.call();
+					d.exit();
+				}
+			});
 		}
+
+	} else {
+		wrapTask = function( task ) {
+			return function() {
+				try {
+					task.call();
+
+				} catch ( e ) {
+					pendingErrors.push( e );
+					requestErrorThrow();
+				}
+			};
+		}
+
+		asapSafeTask = runLater;
+	}
+
+
+	function asap( task ) {
+		runLater( wrapTask(task) );
 	}
 
 	//__________________________________________________________________________
@@ -116,18 +194,14 @@
 	}
 
 	function reportError( error ) {
-		try {
+		asap(function() {
 			if ( P.onerror ) {
-				P.onerror( error );
+				P.onerror.call( null, error );
+
 			} else {
 				throw error;
 			}
-
-		} catch ( e ) {
-			setTimeout(function() {
-				throw e;
-			}, 0);
-		}
+		});
 	}
 
 	var PENDING = 0;
@@ -140,7 +214,7 @@
 			Resolve( new Promise(), x );
 	}
 
-	function Settle( p, state, value ) {
+	function Settle( p, state, value, domain ) {
 		if ( p._state ) {
 			return p;
 		}
@@ -148,7 +222,14 @@
 		p._state = state;
 		p._value = value;
 
-		if ( p._pending.length > 0 ) {
+		if ( domain ) {
+			p._domain = domain;
+
+		} else if ( isNodeJS && state === REJECTED ) {
+			p._domain = process.domain;
+		}
+
+		if ( p._pending.length ) {
 			forEach( p._pending, runLater );
 		}
 		p._pending = null;
@@ -158,7 +239,17 @@
 
 	function OnSettled( p, f ) {
 		p._pending.push( f );
-		//p._tail = p._tail.n = { f: f, n: null };
+	}
+
+	function Propagate( p, p2 ) {
+		if ( p._state ) {
+			Settle( p2, p._state, p._value, p._domain );
+
+		} else {
+			OnSettled(p, function() {
+				Settle( p2, p._state, p._value, p._domain );
+			});
+		}
 	}
 
 	function Resolve( p, x ) {
@@ -170,20 +261,15 @@
 			if ( x === p ) {
 				Settle( p, REJECTED, new TypeError("You can't resolve a promise with itself") );
 
-			} else if ( x._state ) {
-				Settle( p, x._state, x._value );
-
 			} else {
-				OnSettled(x, function() {
-					Settle( p, x._state, x._value );
-				});
+				Propagate( x, p );
 			}
 
 		} else if ( x !== Object(x) ) {
 			Settle( p, FULFILLED, x );
 
 		} else {
-			runLater(function() {
+			asapSafeTask(function() {
 				var r = resolverFor( p );
 
 				try {
@@ -199,7 +285,7 @@
 				} catch ( e ) {
 					r.reject( e );
 				}
-			});
+			}, true);
 		}
 
 		return p;
@@ -240,6 +326,7 @@
 	function Promise() {
 		this._state = 0;
 		this._value = void 0;
+		this._domain = null;
 		this._pending = [];
 	}
 
@@ -250,30 +337,41 @@
 		var p = this;
 		var p2 = new Promise();
 
-		function onSettled() {
-			var x, func = p._state === FULFILLED ? cb : eb;
+		if ( cb || eb ) {
+			var thenDomain = isNodeJS && process.domain;
 
-			if ( func !== null ) {
-				try {
-					x = func( p._value );
-
-				} catch ( e ) {
-					Settle( p2, REJECTED, e );
-					return;
-				}
-
-				Resolve( p2, x );
+			if ( p._state === PENDING ) {
+				OnSettled( p, onSettled );
 
 			} else {
-				Settle( p2, p._state, p._value );
+				runLater( onSettled );
 			}
-		}
-
-		if ( p._state === PENDING ) {
-			OnSettled( p, onSettled );
 
 		} else {
-			runLater( onSettled );
+			Propagate( p, p2 );
+		}
+
+		function onSettled() {
+			var func = p._state === FULFILLED ? cb : eb;
+			var x, catched = false;
+			var d = p._domain || thenDomain;
+
+			if ( d ) {
+				if ( d._disabled ) return;
+				d.enter();
+			}
+
+			try {
+				x = func( p._value );
+
+			} catch ( e ) {
+				catched = true;
+				Settle( p2, REJECTED, e );
+			}
+
+			if ( !catched ) {
+				Resolve( p2, x );
+			}
 		}
 
 		return p2;
@@ -306,7 +404,7 @@
 		var p2 = new Promise();
 
 		if ( p._state !== PENDING ) {
-			Settle( p2, p._state, p._value );
+			Propagate( p, p2 );
 
 		} else {
 			var timeoutId = setTimeout(function() {
@@ -316,7 +414,7 @@
 
 			OnSettled(p, function() {
 				clearTimeout( timeoutId );
-				Settle( p2, p._state, p._value );
+				Propagate( p, p2 );
 			});
 		}
 
