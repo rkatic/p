@@ -7,43 +7,6 @@ if ( typeof P === "undefined" ) {
 	var mocha = require("mocha");
 }
 
-(function( proto ){
-	var run = proto.run;
-
-	proto.run = function() {
-		if ( !this.fn._wrapped_ ) {
-			var fn = this.fn;
-
-			this.fn = function( done ) {
-				var x = fn.call( this, done );
-
-				if ( x && typeof x.then === "function" ) {
-					x.then(
-						function() {
-							done();
-						},
-						function( e ) {
-							done( e || new Error("Promise rejected with falsy reason.") );
-						}
-					);
-
-				} else if ( fn.length === 0 ) {
-					done();
-				}
-			};
-
-			this.fn.toString = function() {
-				return fn.toString();
-			};
-
-			this.fn._wrapped_ = fn;
-			this.async = true;
-		};
-
-		return run.apply( this, arguments );
-	};
-})(mocha.Runnable.prototype);
-
 
 function fail() {
 	expect(true).to.be(false);
