@@ -520,5 +520,7 @@
 
 	P.onerror = null;
 
+	P.nextTick = asap;
+
 	return P;
 });
