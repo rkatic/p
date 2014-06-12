@@ -133,7 +133,7 @@
 
 			return function() {
 				if ( d ) {
-					if ( d._disabled ) return;
+					if ( d._disposed ) return;
 					d.enter();
 				}
 
@@ -153,7 +153,7 @@
 		asapSafeTask = function( task ) {
 			var d = process.domain;
 			runLater(!d ? task : function() {
-				if ( !d._disabled ) {
+				if ( !d._disposed ) {
 					d.enter();
 					task.call();
 					d.exit();
@@ -348,7 +348,7 @@
 			var d = p._domain || thenDomain;
 
 			if ( d ) {
-				if ( d._disabled ) return;
+				if ( d._disposed ) return;
 				d.enter();
 			}
 
