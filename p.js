@@ -36,7 +36,7 @@
 			makeRequestCallFromTimer( flush ),
 
 		pendingErrors = [],
-		requestErrorThrow = makeRequestCallFromTimer( throwFristError ),
+		requestErrorThrow = makeRequestCallFromTimer( throwFirstError ),
 
 		wrapTask,
 		asapSafeTask,
@@ -50,7 +50,7 @@
 		return type === "object" || type === "function";
 	}
 
-	function throwFristError() {
+	function throwFirstError() {
 		if ( pendingErrors.length ) {
 			throw pendingErrors.shift();
 		}
