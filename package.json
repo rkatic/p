@@ -28,7 +28,7 @@
   "devDependencies": {
     "mocha": "1.x.x",
     "expect.js" : "0.3.x",
-    "promises-aplus-tests": "~1",
+    "promises-aplus-tests": "~2",
     "uglify-js": "~2"
   }
 }
