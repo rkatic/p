@@ -518,18 +518,5 @@
 
 	P.onerror = null;
 
-	P.nextTick = function( f ) {
-		runLater(function() {
-			try {
-				f();
-
-			} catch ( ex ) {
-				setTimeout(function() {
-					throw ex;
-				}, 0);
-			}
-		});
-	};
-
 	return P;
 });
