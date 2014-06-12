@@ -372,6 +372,10 @@
 			if ( !catched ) {
 				Resolve( p2, x );
 			}
+
+			if ( d ) {
+				d.exit();
+			}
 		}
 
 		return p2;
