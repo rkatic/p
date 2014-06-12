@@ -140,8 +140,9 @@
 				try {
 					task.call();
 
-				} finally {
+				} catch ( e ) {
 					requestFlush();
+					throw e;
 				}
 
 				if ( d ) {
