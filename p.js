@@ -242,14 +242,7 @@
 	}
 
 	function Propagate( p, p2 ) {
-		if ( p._state ) {
-			Settle( p2, p._state, p._value, p._domain );
-
-		} else {
-			OnSettled(p, function() {
-				Settle( p2, p._state, p._value, p._domain );
-			});
-		}
+		Settle( p2, p._state, p._value, p._domain );
 	}
 
 	function Resolve( p, x ) {
@@ -261,8 +254,13 @@
 			if ( x === p ) {
 				Settle( p, REJECTED, new TypeError("You can't resolve a promise with itself") );
 
-			} else {
+			} else if ( x._state ) {
 				Propagate( x, p );
+
+			} else {
+				OnSettled(x, function() {
+					Propagate( x, p );
+				});
 			}
 
 		} else if ( x !== Object(x) ) {
@@ -337,22 +335,15 @@
 		var p = this;
 		var p2 = new Promise();
 
-		if ( cb || eb ) {
-			var thenDomain = isNodeJS && process.domain;
-
-			if ( p._state === PENDING ) {
-				OnSettled( p, onSettled );
-
-			} else {
-				runLater( onSettled );
-			}
-
-		} else {
-			Propagate( p, p2 );
-		}
+		var thenDomain = isNodeJS && process.domain;
 
 		function onSettled() {
 			var func = p._state === FULFILLED ? cb : eb;
+			if ( !func ) {
+				Propagate( p, p2 );
+				return;
+			}
+
 			var x, catched = false;
 			var d = p._domain || thenDomain;
 
@@ -376,6 +367,13 @@
 			if ( d ) {
 				d.exit();
 			}
+		}
+
+		if ( p._state === PENDING ) {
+			OnSettled( p, onSettled );
+
+		} else {
+			runLater( onSettled );
 		}
 
 		return p2;
