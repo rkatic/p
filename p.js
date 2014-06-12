@@ -283,7 +283,7 @@
 				} catch ( e ) {
 					r.reject( e );
 				}
-			}, true);
+			});
 		}
 
 		return p;
