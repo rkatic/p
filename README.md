@@ -14,7 +14,6 @@ A simple Promises/A+ library.
 - Cross-Browser, Node.js and RequireJS ready.
 - Small.
 - Simple.
-- [Ultra Fast](http://jsperf.com/wqfwewefewrw/9).
 
 ##API
 
