@@ -22,17 +22,21 @@
 	"use strict";
 
 	var
-		isNodeJS = ot(typeof process) &&
+		isNodeJS = ot(typeof process) && process != null &&
 			({}).toString.call(process) === "[object process]",
 
-		hasSetImmediate = ot(typeof setImmediate),
+		hasSetImmediate = typeof setImmediate === "function",
+
+		gMutationObserver =
+			ot(typeof MutationObserver) && MutationObserver ||
+			ot(typeof WebKitMutationObserver) && WebKitMutationObserver,
 
 		head = { f: null, n: null }, tail = head,
 		flushing = false,
 
 		requestFlush =
-			isNodeJS && requestFlushForNodeJS ||
-			makeRequestCallFromMutationObserver( flush ) ||
+			isNodeJS ? requestFlushForNodeJS :
+			gMutationObserver ? makeRequestCallFromMutationObserver( flush ) :
 			makeRequestCallFromTimer( flush ),
 
 		pendingErrors = [],
@@ -95,17 +99,9 @@
 	}
 
 	function makeRequestCallFromMutationObserver( callback ) {
-		var observer =
-			ot(typeof MutationObserver) ? new MutationObserver( callback ) :
-			ot(typeof WebKitMutationObserver) ? new WebKitMutationObserver( callback ) :
-			null;
-
-		if ( !observer ) {
-			return null;
-		}
-
 		var toggle = 1;
 		var node = document.createTextNode("");
+		var observer = new gMutationObserver( callback );
 		observer.observe( node, {characterData: true} );
 
 		return function() {
