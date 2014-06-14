@@ -1,10 +1,10 @@
-
+(function(){
 "use strict";
 
 if ( typeof P === "undefined" ) {
 	global.P = require("../p");
-	var expect = require("expect.js");
-	var mocha = require("mocha");
+	global.expect = require("expect.js");
+	require("mocha");
 }
 
 
@@ -265,3 +265,5 @@ describe("delay", function() {
 		});
 	});
 });
+
+})();
