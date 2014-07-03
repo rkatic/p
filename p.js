@@ -288,10 +288,6 @@
 		return p;
 	}
 
-	function OnSettled( p, task, a, b ) {
-		createTaskNode( p, true, task, a, b );
-	}
-
 	function Propagate( p, child ) {
 		child._domain = p._domain;
 		Settle( child, p._state, p._value );
@@ -485,10 +481,10 @@
 					new Error(msg || "Timed out after " + ms + " ms") );
 			}, ms);
 
-			OnSettled(p, function() {
+			createTaskNode(p, false, function() {
 				clearTimeout( timeoutId );
 				Propagate( p, p2 );
-			});
+			}, void 0, void 0);
 		}
 
 		return p2;
@@ -532,23 +528,28 @@
 	function allSettled( input, output ) {
 		var waiting = 0;
 		var promise = new Promise();
-		forEach( input, function( x, index ) {
+
+		function onSettled( p, index ) {
+			output[ index ] = p.inspect();
+			if ( --waiting === 0 ) {
+				Settle( promise, FULFILLED, output );
+			}
+		}
+
+		for ( var i = 0; l = input.length; ++i ) {
 			var p = P( x );
 			if ( p._state === PENDING ) {
 				++waiting;
-				OnSettled(p, function() {
-					output[ index ] = p.inspect();
-					if ( --waiting === 0 ) {
-						Settle( promise, FULFILLED, output );
-					}
-				});
+				createTaskNode( p, false, onSettled, p, i );
 			} else {
 				output[ index ] = p.inspect();
 			}
-		});
+		}
+
 		if ( waiting === 0 ) {
 			Settle( promise, FULFILLED, output );
 		}
+
 		return promise;
 	}
 
