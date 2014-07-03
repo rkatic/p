@@ -511,23 +511,11 @@
 		}
 	};
 
-	function valuesHandler( f ) {
-		function onFulfilled( values ) {
-			return f( values, [] );
-		}
-
-		function handleValues( values ) {
-			return P( values ).then( onFulfilled );
-		}
-
-		handleValues._ = f;
-		return handleValues;
-	}
-
-	P.allSettled = valuesHandler( allSettled );
-	function allSettled( input, output ) {
+	P.allSettled = allSettled;
+	function allSettled( input ) {
 		var waiting = 0;
 		var promise = new Promise();
+		var output = new Array( input.length );
 
 		function onSettled( p, index ) {
 			output[ index ] = p.inspect();
@@ -553,10 +541,12 @@
 		return promise;
 	}
 
-	P.all = valuesHandler( all );
-	function all( input, output ) {
+	P.all = all;
+	function all( input ) {
 		var waiting = 0;
 		var d = defer();
+		var output = new Array( input.length );
+
 		forEach( input, function( x, index ) {
 			var p = P( x );
 			if ( p._state === FULFILLED ) {
@@ -572,9 +562,11 @@
 				}, d.reject);
 			}
 		});
+
 		if ( waiting === 0 ) {
 			d.resolve( output );
 		}
+
 		return d.promise;
 	}
 
@@ -585,8 +577,7 @@
 		}
 
 		return function() {
-			var allArgs = all( arguments, [] );
-			return all( [this, allArgs], [] ).then( onFulfilled );
+			return all([ this, all(arguments) ]).then( onFulfilled );
 		};
 	}
 
