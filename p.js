@@ -31,7 +31,8 @@
 			ot(typeof MutationObserver) && MutationObserver ||
 			ot(typeof WebKitMutationObserver) && WebKitMutationObserver,
 
-		head = { f: null, n: null }, tail = head,
+		head = new TaskNode(),
+		tail = head,
 		flushing = false,
 
 		requestFlush =
@@ -42,13 +43,22 @@
 		pendingErrors = [],
 		requestErrorThrow = makeRequestCallFromTimer( throwFirstError ),
 
-		wrapTask,
-		asapSafeTask,
+		asapRunSafe,
 
 		domain,
 
 		call = ot.call,
 		apply = ot.apply;
+
+	tail.next = head;
+
+	function TaskNode() {
+		this.task = null;
+		this.domain = null;
+		this.a = null;
+		this.b = null;
+		this.next = null;
+	}
 
 	function ot( type ) {
 		return type === "object" || type === "function";
@@ -61,22 +71,96 @@
 	}
 
 	function flush() {
-		while ( head.n ) {
-			head = head.n;
-			var f = head.f;
-			head.f = null;
-			f.call();
+		while ( head !== tail ) {
+			head = head.next;
+			var task = head.task;
+
+			if ( head.domain ) {
+				runInDomain( head.domain, task, head.a, head.b );
+				head.domain = null;
+
+			} else {
+				task( head.a, head.b );
+			}
+
+			head.task = null;
+			head.a = null;
+			head.b = null;
 		}
+
 		flushing = false;
 	}
 
-	var runLater = function( f ) {
-		tail = tail.n = { f: f, n: null };
+	function queueNodes( first, last ) {
+		var t = tail.next;
+		tail.next = first;
+		tail = last || first;
+		tail.next = t;
+
 		if ( !flushing ) {
 			flushing = true;
 			requestFlush();
 		}
-	};
+	}
+
+	function beforeThrow() {
+		head.task = null;
+		head.domain = null;
+		head.a = null;
+		head.b = null;
+		requestFlush();
+	}
+
+	function runInDomain( domain, task, a, b ) {
+		if ( domain._disposed ) {
+			return;
+		}
+		domain.enter();
+		task( a, b );
+		domain.exit();
+	}
+
+	function createTaskNode( p, setDomain, task, a, b ) {
+		var node = tail.next;
+
+		if ( node === head ) {
+			node = new TaskNode();
+			if ( !p ) {
+				tail = tail.next = node;
+				node.next = head;
+			}
+
+		} else if ( p ) {
+			tail.next = node.next;
+			node.next = null;
+
+		} else {
+			tail = node;
+		}
+
+		node.task = task;
+		node.a = a;
+		node.b = b;
+
+		if ( setDomain && isNodeJS ) {
+			node.domain = process.domain;
+		}
+
+		if ( p ) {
+			if ( p._lastPending ) {
+				p._lastPending.next = node;
+			} else {
+				p._firstPending = node;
+			}
+			p._lastPending = node;
+
+		} else if ( !flushing ) {
+			flushing = true;
+			requestFlush();
+		}
+
+		return node;
+	}
 
 	function requestFlushForNodeJS() {
 		var currentDomain = process.domain;
@@ -124,59 +208,31 @@
 	}
 
 	if ( isNodeJS ) {
-		wrapTask = function( task ) {
-			var d = process.domain;
+		asapRunSafe = function( task ) {
+			try {
+				task.call();
 
-			return function() {
-				if ( d ) {
-					if ( d._disposed ) return;
-					d.enter();
-				}
-
-				try {
-					task.call();
-
-				} catch ( e ) {
-					requestFlush();
-					throw e;
-				}
-
-				if ( d ) {
-					d.exit();
-				}
-			};
+			} catch ( e ) {
+				beforeThrow();
+				throw e;
+			}
 		};
 
-		asapSafeTask = function( task ) {
-			var d = process.domain;
-			runLater(!d ? task : function() {
-				if ( !d._disposed ) {
-					d.enter();
-					task.call();
-					d.exit();
-				}
-			});
-		}
-
 	} else {
-		wrapTask = function( task ) {
-			return function() {
-				try {
-					task.call();
+		asapRunSafe = function( task ) {
+			try {
+				task.call();
 
-				} catch ( e ) {
-					pendingErrors.push( e );
-					requestErrorThrow();
-				}
-			};
+			} catch ( e ) {
+				pendingErrors.push( e );
+				requestErrorThrow();
+			}
 		}
-
-		asapSafeTask = runLater;
 	}
 
 
 	function asap( task ) {
-		runLater( wrapTask(task) );
+		createTaskNode( null, true, asapRunSafe, task, void 0 );
 	}
 
 	//__________________________________________________________________________
@@ -211,7 +267,7 @@
 			Resolve( new Promise(), x );
 	}
 
-	function Settle( p, state, value, domain ) {
+	function Settle( p, state, value ) {
 		if ( p._state ) {
 			return p;
 		}
@@ -219,30 +275,29 @@
 		p._state = state;
 		p._value = value;
 
-		if ( domain ) {
-			p._domain = domain;
-
-		} else if ( isNodeJS && state === REJECTED ) {
+		if ( state === REJECTED && !p._domain && isNodeJS ) {
 			p._domain = process.domain;
 		}
 
-		if ( p._pending.length ) {
-			forEach( p._pending, runLater );
+		if ( p._firstPending ) {
+			queueNodes( p._firstPending, p._lastPending );
+			p._firstPending = null;
+			p._lastPending = null;
 		}
-		p._pending = null;
 
 		return p;
 	}
 
-	function OnSettled( p, f ) {
-		p._pending.push( f );
+	function OnSettled( p, task, a, b ) {
+		createTaskNode( p, true, task, a, b );
 	}
 
-	function Propagate( p, p2 ) {
-		Settle( p2, p._state, p._value, p._domain );
+	function Propagate( p, child ) {
+		child._domain = p._domain;
+		Settle( child, p._state, p._value );
 	}
 
-	function Resolve( p, x ) {
+	function Resolve( p, x, sync ) {
 		if ( p._state ) {
 			return p;
 		}
@@ -255,35 +310,46 @@
 				Propagate( x, p );
 
 			} else {
-				OnSettled(x, function() {
-					Propagate( x, p );
-				});
+				createTaskNode( x, false, Propagate, x, p );
 			}
 
 		} else if ( x !== Object(x) ) {
 			Settle( p, FULFILLED, x );
 
+		} else if ( sync ) {
+			Assimilate( p, x );
+
 		} else {
-			asapSafeTask(function() {
-				var r = resolverFor( p );
-
-				try {
-					var then = x.then;
-
-					if ( typeof then === "function" ) {
-						call.call( then, x, r.resolve, r.reject );
-
-					} else {
-						Settle( p, FULFILLED, x );
-					}
-
-				} catch ( e ) {
-					r.reject( e );
-				}
-			});
+			createTaskNode( null, true, Assimilate, p, x );
 		}
 
 		return p;
+	}
+
+	function Assimilate( p, x ) {
+		var r, then;
+
+		try {
+			then = x.then;
+
+		} catch ( e1 ) {
+			Settle( p, REJECTED, e1 );
+			return;
+		}
+
+		if ( typeof then === "function" ) {
+			r = resolverFor( p );
+
+			try {
+				call.call( then, x, r.resolve, r.reject );
+
+			} catch ( e2 ) {
+				r.reject( e2 );
+			}
+
+		} else {
+			Settle( p, FULFILLED, x );
+		}
 	}
 
 	function resolverFor( promise ) {
@@ -295,7 +361,7 @@
 			resolve: function( y ) {
 				if ( !done ) {
 					done = true;
-					Resolve( promise, y );
+					Resolve( promise, y, false );
 				}
 			},
 
@@ -322,59 +388,67 @@
 		this._state = 0;
 		this._value = void 0;
 		this._domain = null;
-		this._pending = [];
+		this._cb = null;
+		this._eb = null;
+		this._firstPending = null;
+		this._lastPending = null;
 	}
 
 	Promise.prototype.then = function( onFulfilled, onRejected ) {
-		var cb = typeof onFulfilled === "function" ? onFulfilled : null;
-		var eb = typeof onRejected === "function" ? onRejected : null;
+		var promise = new Promise();
 
-		var p = this;
-		var p2 = new Promise();
+		promise._cb = typeof onFulfilled === "function" ? onFulfilled : null;
+		promise._eb = typeof onRejected === "function" ? onRejected : null;
 
-		var thenDomain = isNodeJS && process.domain;
+		promise._domain = isNodeJS ? process.domain : null;
 
-		function onSettled() {
-			var func = p._state === FULFILLED ? cb : eb;
-			if ( !func ) {
-				Propagate( p, p2 );
-				return;
-			}
+		createTaskNode(
+			this._state === PENDING ? this : null,
+			false, // no domain binding
+			Then,
+			this, // parent
+			promise // child
+		);
 
-			var x, catched = false;
-			var d = p._domain || thenDomain;
+		return promise;
+	};
 
-			if ( d ) {
-				if ( d._disposed ) return;
-				d.enter();
-			}
+	function Then( parent, child ) {
+		var cb = parent._state === FULFILLED ? child._cb : child._eb;
+		child._cb = null;
+		child._eb = null;
 
-			try {
-				x = func( p._value );
-
-			} catch ( e ) {
-				catched = true;
-				Settle( p2, REJECTED, e );
-			}
-
-			if ( !catched ) {
-				Resolve( p2, x );
-			}
-
-			if ( d ) {
-				d.exit();
-			}
+		if ( !cb ) {
+			Propagate( parent, child );
+			return;
 		}
 
-		if ( p._state === PENDING ) {
-			OnSettled( p, onSettled );
+		child._value = parent._value;
+
+		var domain = parent._domain || child._domain;
+
+		if ( domain ) {
+			child._domain = null;
+			runInDomain( domain, HandleCallback, cb, child );
 
 		} else {
-			runLater( onSettled );
+			HandleCallback( cb, child );
+		}
+	}
+
+	function HandleCallback( cb, promise ) {
+		var x;
+
+		try {
+			x = cb( promise._value );
+
+		} catch ( e ) {
+			Settle( promise, REJECTED, e );
+			return;
 		}
 
-		return p2;
-	};
+		Resolve( promise, x, true );
+	}
 
 	Promise.prototype.done = function( cb, eb ) {
 		var p = this;
