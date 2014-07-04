@@ -43,7 +43,7 @@
 		pendingErrors = [],
 		requestErrorThrow = makeRequestCallFromTimer( throwFirstError ),
 
-		asapRunSafe,
+		handleError,
 
 		domain,
 
@@ -76,7 +76,7 @@
 			var task = head.task;
 
 			if ( head.domain ) {
-				runInDomain( head.domain, task, head.a, head.b );
+				runInDomain( head.domain, task, head.a, head.b, void 0 );
 				head.domain = null;
 
 			} else {
@@ -91,18 +91,6 @@
 		flushing = false;
 	}
 
-	function queueNodes( first, last ) {
-		var t = tail.next;
-		tail.next = first;
-		tail = last || first;
-		tail.next = t;
-
-		if ( !flushing ) {
-			flushing = true;
-			requestFlush();
-		}
-	}
-
 	function beforeThrow() {
 		head.task = null;
 		head.domain = null;
@@ -111,12 +99,12 @@
 		requestFlush();
 	}
 
-	function runInDomain( domain, task, a, b ) {
+	function runInDomain( domain, task, a, b, c ) {
 		if ( domain._disposed ) {
 			return;
 		}
 		domain.enter();
-		task( a, b );
+		task( a, b, c );
 		domain.exit();
 	}
 
@@ -160,6 +148,21 @@
 		}
 
 		return node;
+	}
+
+	function queuePending( p ) {
+		var t = tail.next;
+		tail.next = p._firstPending;
+		tail = p._lastPending;
+		tail.next = t;
+
+		p._firstPending = null;
+		p._lastPending = null;
+
+		if ( !flushing ) {
+			flushing = true;
+			requestFlush();
+		}
 	}
 
 	function requestFlushForNodeJS() {
@@ -208,25 +211,24 @@
 	}
 
 	if ( isNodeJS ) {
-		asapRunSafe = function( task ) {
-			try {
-				task.call();
-
-			} catch ( e ) {
-				beforeThrow();
-				throw e;
-			}
+		handleError = function( e ) {
+			beforeThrow();
+			throw e;
 		};
 
 	} else {
-		asapRunSafe = function( task ) {
-			try {
-				task.call();
+		handleError = function( e ) {
+			pendingErrors.push( e );
+			requestErrorThrow();
+		}
+	}
 
-			} catch ( e ) {
-				pendingErrors.push( e );
-				requestErrorThrow();
-			}
+	function asapRunSafe( task, _ ) {
+		try {
+			task.call();
+
+		} catch ( e ) {
+			handleError( e );
 		}
 	}
 
@@ -237,7 +239,7 @@
 
 	//__________________________________________________________________________
 
-
+	
 	function forEach( arr, cb ) {
 		for ( var i = 0, l = arr.length; i < l; ++i ) {
 			if ( i in arr ) {
@@ -247,14 +249,17 @@
 	}
 
 	function reportError( error ) {
-		asap(function() {
-			if ( P.onerror ) {
+		if ( P.onerror ) {
+			try {
 				P.onerror.call( null, error );
 
-			} else {
-				throw error;
+			} catch ( e ) {
+				handleError( e );
 			}
-		});
+
+		} else {
+			handleError( error );
+		}
 	}
 
 	var PENDING = 0;
@@ -275,22 +280,31 @@
 		p._state = state;
 		p._value = value;
 
-		if ( state === REJECTED && !p._domain && isNodeJS ) {
+		if ( state === REJECTED && isNodeJS ) {
 			p._domain = process.domain;
 		}
 
 		if ( p._firstPending ) {
-			queueNodes( p._firstPending, p._lastPending );
-			p._firstPending = null;
-			p._lastPending = null;
+			queuePending( p );
 		}
 
 		return p;
 	}
 
-	function Propagate( p, child ) {
-		child._domain = p._domain;
-		Settle( child, p._state, p._value );
+	function Propagate( parent, p ) {
+		if ( p._state ) {
+			return p;
+		}
+
+		p._state = parent._state;
+		p._value = parent._value;
+		p._domain = parent._domain;
+
+		if ( p._firstPending ) {
+			queuePending( p );
+		}
+
+		return p;
 	}
 
 	function Resolve( p, x, sync ) {
@@ -419,24 +433,22 @@
 			return;
 		}
 
-		child._value = parent._value;
-
 		var domain = parent._domain || child._domain;
 
 		if ( domain ) {
 			child._domain = null;
-			runInDomain( domain, HandleCallback, cb, child );
+			runInDomain( domain, HandleCallback, cb, child, parent._value );
 
 		} else {
-			HandleCallback( cb, child );
+			HandleCallback( cb, child, parent._value );
 		}
 	}
 
-	function HandleCallback( cb, promise ) {
+	function HandleCallback( cb, promise, value ) {
 		var x;
 
 		try {
-			x = cb( promise._value );
+			x = cb( value );
 
 		} catch ( e ) {
 			Settle( promise, REJECTED, e );
