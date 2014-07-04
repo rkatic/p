@@ -239,7 +239,7 @@
 
 	//__________________________________________________________________________
 
-	
+
 	function forEach( arr, cb ) {
 		for ( var i = 0, l = arr.length; i < l; ++i ) {
 			if ( i in arr ) {
@@ -474,7 +474,7 @@
 
 	Promise.prototype.spread = function( cb, eb ) {
 		return this.then(cb && function( array ) {
-			return all( array, [] ).then(function( values ) {
+			return all( array ).then(function( values ) {
 				return apply.call( cb, void 0, values );
 			}, eb);
 		}, eb);
@@ -529,8 +529,8 @@
 		var promise = new Promise();
 		var output = new Array( input.length );
 
-		function onSettled( p, index ) {
-			output[ index ] = p.inspect();
+		function onSettled( p, i ) {
+			output[ i ] = p.inspect();
 			if ( --waiting === 0 ) {
 				Settle( promise, FULFILLED, output );
 			}
@@ -542,7 +542,7 @@
 				++waiting;
 				createTaskNode( p, false, onSettled, p, i );
 			} else {
-				output[ index ] = p.inspect();
+				output[ i ] = p.inspect();
 			}
 		}
 
