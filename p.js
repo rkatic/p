@@ -223,18 +223,18 @@
 		}
 	}
 
-	function asapRunSafe( task, _ ) {
+	function tryCall( toCall, onError ) {
 		try {
-			task.call();
+			toCall.call();
 
 		} catch ( e ) {
-			handleError( e );
+			onError( e );
 		}
 	}
 
 
 	function asap( task ) {
-		createTaskNode( null, true, asapRunSafe, task, void 0 );
+		createTaskNode( null, true, tryCall, task, handleError );
 	}
 
 	//__________________________________________________________________________
@@ -249,17 +249,14 @@
 	}
 
 	function reportError( error ) {
-		if ( P.onerror ) {
-			try {
+		asap(function() {
+			if ( P.onerror ) {
 				P.onerror.call( null, error );
 
-			} catch ( e ) {
-				handleError( e );
+			} else {
+				throw error;
 			}
-
-		} else {
-			handleError( error );
-		}
+		});
 	}
 
 	var PENDING = 0;
