@@ -115,7 +115,6 @@
 			node = new TaskNode();
 			tail.next = node;
 			node.next = head;
-
 		}
 
 		tail = node;
@@ -354,6 +353,41 @@
 		}
 	}
 
+	function Then( parent, child ) {
+		var cb = parent._state === FULFILLED ? child._cb : child._eb;
+		child._cb = null;
+		child._eb = null;
+
+		if ( !cb ) {
+			Propagate( parent, child );
+			return;
+		}
+
+		var domain = parent._domain || child._domain;
+
+		if ( domain ) {
+			child._domain = null;
+			runInDomain( domain, HandleCallback, cb, child, parent._value );
+
+		} else {
+			HandleCallback( cb, child, parent._value );
+		}
+	}
+
+	function HandleCallback( cb, promise, value ) {
+		var x;
+
+		try {
+			x = cb( value );
+
+		} catch ( e ) {
+			Settle( promise, REJECTED, e );
+			return;
+		}
+
+		Resolve( promise, x, true );
+	}
+
 	function resolverFor( promise ) {
 		var done = false;
 
@@ -395,7 +429,6 @@
 		this._pending = null;
 	}
 
-
 	Promise.prototype.then = function( onFulfilled, onRejected ) {
 		var promise = new Promise();
 
@@ -413,41 +446,6 @@
 
 		return promise;
 	};
-
-	function Then( parent, child ) {
-		var cb = parent._state === FULFILLED ? child._cb : child._eb;
-		child._cb = null;
-		child._eb = null;
-
-		if ( !cb ) {
-			Propagate( parent, child );
-			return;
-		}
-
-		var domain = parent._domain || child._domain;
-
-		if ( domain ) {
-			child._domain = null;
-			runInDomain( domain, HandleCallback, cb, child, parent._value );
-
-		} else {
-			HandleCallback( cb, child, parent._value );
-		}
-	}
-
-	function HandleCallback( cb, promise, value ) {
-		var x;
-
-		try {
-			x = cb( value );
-
-		} catch ( e ) {
-			Settle( promise, REJECTED, e );
-			return;
-		}
-
-		Resolve( promise, x, true );
-	}
 
 	Promise.prototype.done = function( cb, eb ) {
 		var p = this;
