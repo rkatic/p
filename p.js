@@ -108,23 +108,17 @@
 		domain.exit();
 	}
 
-	function createTaskNode( p, setDomain, task, a, b ) {
+	function queueTask( setDomain, task, a, b ) {
 		var node = tail.next;
 
 		if ( node === head ) {
 			node = new TaskNode();
-			if ( !p ) {
-				tail = tail.next = node;
-				node.next = head;
-			}
+			tail.next = node;
+			node.next = head;
 
-		} else if ( p ) {
-			tail.next = node.next;
-			node.next = null;
-
-		} else {
-			tail = node;
 		}
+
+		tail = node;
 
 		node.task = task;
 		node.a = a;
@@ -133,31 +127,6 @@
 		if ( setDomain && isNodeJS ) {
 			node.domain = process.domain;
 		}
-
-		if ( p ) {
-			if ( p._lastPending ) {
-				p._lastPending.next = node;
-			} else {
-				p._firstPending = node;
-			}
-			p._lastPending = node;
-
-		} else if ( !flushing ) {
-			flushing = true;
-			requestFlush();
-		}
-
-		return node;
-	}
-
-	function queuePending( p ) {
-		var t = tail.next;
-		tail.next = p._firstPending;
-		tail = p._lastPending;
-		tail.next = t;
-
-		p._firstPending = null;
-		p._lastPending = null;
 
 		if ( !flushing ) {
 			flushing = true;
@@ -234,7 +203,7 @@
 
 
 	function asap( task ) {
-		createTaskNode( null, true, tryCall, task, handleError );
+		queueTask( true, tryCall, task, handleError );
 	}
 
 	//__________________________________________________________________________
@@ -281,8 +250,8 @@
 			p._domain = process.domain;
 		}
 
-		if ( p._firstPending ) {
-			queuePending( p );
+		if ( p._pending ) {
+			QueueChildren( p );
 		}
 
 		return p;
@@ -297,8 +266,8 @@
 		p._value = parent._value;
 		p._domain = parent._domain;
 
-		if ( p._firstPending ) {
-			queuePending( p );
+		if ( p._pending ) {
+			QueueChildren( p );
 		}
 
 		return p;
@@ -317,7 +286,7 @@
 				Propagate( x, p );
 
 			} else {
-				createTaskNode( x, false, Propagate, x, p );
+				Follow( p, x );
 			}
 
 		} else if ( x !== Object(x) ) {
@@ -327,7 +296,7 @@
 			Assimilate( p, x );
 
 		} else {
-			createTaskNode( null, true, Assimilate, p, x );
+			queueTask( true, Assimilate, p, x );
 		}
 
 		return p;
@@ -356,6 +325,32 @@
 
 		} else {
 			Settle( p, FULFILLED, x );
+		}
+	}
+
+	function QueueChildren( p ) {
+		var pending = p._pending;
+		p._pending = null;
+
+		if ( pending instanceof Promise ) {
+			queueTask( false, Then, p, pending );
+			return;
+		}
+
+		for ( var i = 0, l = pending.length; i < l; ++i ) {
+			queueTask( false, Then, p, pending[i] );
+		}
+	}
+
+	function Follow( child, p ) {
+		if ( !p._pending ) {
+			p._pending = child;
+
+		} else if ( p._pending instanceof Promise ) {
+			p._pending = [ p._pending, child ];
+
+		} else {
+			p._pending.push( child );
 		}
 	}
 
@@ -397,9 +392,9 @@
 		this._domain = null;
 		this._cb = null;
 		this._eb = null;
-		this._firstPending = null;
-		this._lastPending = null;
+		this._pending = null;
 	}
+
 
 	Promise.prototype.then = function( onFulfilled, onRejected ) {
 		var promise = new Promise();
@@ -409,13 +404,12 @@
 
 		promise._domain = isNodeJS ? process.domain : null;
 
-		createTaskNode(
-			this._state === PENDING ? this : null,
-			false, // no domain binding
-			Then,
-			this, // parent
-			promise // child
-		);
+		if ( this._state === PENDING ) {
+			Follow( promise, this );
+
+		} else {
+			queueTask( false, Then, this, promise );
+		}
 
 		return promise;
 	};
@@ -469,6 +463,10 @@
 		return this.then( null, eb );
 	};
 
+	Promise.prototype._always = function( cb ) {
+		return this.then( cb, cb );
+	};
+
 	Promise.prototype.spread = function( cb, eb ) {
 		return this.then(cb && function( array ) {
 			return all( array ).then(function( values ) {
@@ -490,10 +488,10 @@
 					new Error(msg || "Timed out after " + ms + " ms") );
 			}, ms);
 
-			createTaskNode(p, false, function() {
+			p._always(function() {
 				clearTimeout( timeoutId );
 				Propagate( p, p2 );
-			}, void 0, void 0);
+			});
 		}
 
 		return p2;
@@ -526,22 +524,21 @@
 		var promise = new Promise();
 		var output = new Array( input.length );
 
-		function onSettled( p, i ) {
-			output[ i ] = p.inspect();
-			if ( --waiting === 0 ) {
-				Settle( promise, FULFILLED, output );
-			}
-		}
-
-		for ( var i = 0; l = input.length; ++i ) {
+		forEach( input, function( x, index ) {
 			var p = P( x );
 			if ( p._state === PENDING ) {
 				++waiting;
-				createTaskNode( p, false, onSettled, p, i );
+				p._always(function() {
+					output[ index ] = p.inspect();
+					if ( --waiting === 0 ) {
+						Settle( promise, FULFILLED, output );
+					}
+				});
+
 			} else {
-				output[ i ] = p.inspect();
+				output[ index ] = p.inspect();
 			}
-		}
+		});
 
 		if ( waiting === 0 ) {
 			Settle( promise, FULFILLED, output );
