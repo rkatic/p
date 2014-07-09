@@ -234,7 +234,7 @@
 	function P( x ) {
 		return x instanceof Promise ?
 			x :
-			Resolve( new Promise(), x );
+			Resolve( new Promise(), x, false );
 	}
 
 	function Settle( p, state, value ) {
