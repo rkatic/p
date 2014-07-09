@@ -75,6 +75,12 @@
 			head = head.next;
 			var task = head.task;
 
+			if ( P.countFreeTaskNodes >= 1024 ) {
+				tail.next = tail.next.next;
+			} else {
+				++P.countFreeTaskNodes;
+			}
+
 			if ( head.domain ) {
 				runInDomain( head.domain, task, head.a, head.b, void 0 );
 				head.domain = null;
@@ -115,6 +121,8 @@
 			node = new TaskNode();
 			tail.next = node;
 			node.next = head;
+		} else {
+			--P.countFreeTaskNodes;
 		}
 
 		tail = node;
@@ -236,6 +244,8 @@
 			x :
 			Resolve( new Promise(), x, false );
 	}
+
+	P.countFreeTaskNodes = 0;
 
 	function Settle( p, state, value ) {
 		if ( p._state ) {
