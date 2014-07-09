@@ -34,6 +34,7 @@
 		head = new TaskNode(),
 		tail = head,
 		flushing = false,
+		countFreeTaskNodes = 0,
 
 		requestFlush =
 			isNodeJS ? requestFlushForNodeJS :
@@ -75,10 +76,10 @@
 			head = head.next;
 			var task = head.task;
 
-			if ( P.countFreeTaskNodes >= 1024 ) {
+			if ( countFreeTaskNodes >= 1024 ) {
 				tail.next = tail.next.next;
 			} else {
-				++P.countFreeTaskNodes;
+				++countFreeTaskNodes;
 			}
 
 			if ( head.domain ) {
@@ -122,7 +123,7 @@
 			tail.next = node;
 			node.next = head;
 		} else {
-			--P.countFreeTaskNodes;
+			--countFreeTaskNodes;
 		}
 
 		tail = node;
@@ -244,8 +245,6 @@
 			x :
 			Resolve( new Promise(), x, false );
 	}
-
-	P.countFreeTaskNodes = 0;
 
 	function Settle( p, state, value ) {
 		if ( p._state ) {
