@@ -34,7 +34,7 @@
 		head = new TaskNode(),
 		tail = head,
 		flushing = false,
-		countFreeTaskNodes = 0,
+		nFreeTaskNodes = 0,
 
 		requestFlush =
 			isNodeJS ? requestFlushForNodeJS :
@@ -76,10 +76,10 @@
 			head = head.next;
 			var task = head.task;
 
-			if ( countFreeTaskNodes >= 1024 ) {
+			if ( nFreeTaskNodes >= 1024 ) {
 				tail.next = tail.next.next;
 			} else {
-				++countFreeTaskNodes;
+				++nFreeTaskNodes;
 			}
 
 			if ( head.domain ) {
@@ -123,7 +123,7 @@
 			tail.next = node;
 			node.next = head;
 		} else {
-			--countFreeTaskNodes;
+			--nFreeTaskNodes;
 		}
 
 		tail = node;
