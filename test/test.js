@@ -7,6 +7,9 @@ if ( typeof P === "undefined" ) {
 	require("mocha");
 }
 
+var isNodeJS = typeof process === "object" && process &&
+	({}).toString.call(process) === "[object process]";
+
 
 function fail() {
 	expect(true).to.be(false);
@@ -262,6 +265,54 @@ describe("delay", function() {
 
 		return p2.then(function( value ) {
 			expect( value ).to.be("foo");
+		});
+	});
+});
+
+if ( isNodeJS ) describe("domain", function() {
+
+	var domain = require("domain");
+
+	it("should work with domains", function() {
+		var d = P.defer();
+		var theValue = 0;
+		var theError = new Error();
+
+		P(47).then(function( value ) { theValue = value; });
+
+		var theDomain = domain.create();
+		theDomain.on("error", function( error ) {
+			expect( theValue ).to.be( 47 );
+			expect( error ).to.be( theError );
+			P().then( d.resolve );
+		})
+		.run(function() {
+			P().then(function() {
+				expect( domain.active ).to.be( theDomain );
+			}).done();
+
+			P.reject( theError ).done();
+		});
+
+		return d.promise.then(function() {
+			expect( domain.active ).not.to.be( theDomain );
+		}, fail);
+	});
+
+	it("should not evaluate promises in disposed domains", function() {
+		var theDomain = domain.create();
+		var called = false;
+
+		theDomain.on("error", function( e ) {
+			P().then(function() { called = true; });
+			theDomain.dispose();
+		})
+		.run(function() {
+			P.reject( new Error() ).done();
+		});
+
+		return P().delay(10).then(function() {
+			expect( called ).to.be( false );
 		});
 	});
 });
