@@ -12,7 +12,7 @@ A simple Promises/A+ library.
 - Implements a subset of the the [Q](https://github.com/kriskowal/q) API.
 - Passing the [Promises/A+ Compliance Test Suite](https://github.com/promises-aplus/promises-tests).
 - Cross-Browser, Node.js and RequireJS ready.
-- Supports domains (Node.js).
+- Supports domains (Note: domains in Node.js v0.8 are broken).
 - Small.
 - Simple.
 - [Fast](http://jsperf.com/davy-jones-benchmark/29).

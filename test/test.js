@@ -269,7 +269,7 @@ describe("delay", function() {
 	});
 });
 
-if ( isNodeJS ) describe("domain", function() {
+if ( isNodeJS && !/v0\.8\./.test(process.version) ) describe("domain", function() {
 
 	var domain = require("domain");
 
