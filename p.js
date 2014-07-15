@@ -278,7 +278,7 @@
 
 	function Propagate( parent, p ) {
 		if ( p._state ) {
-			return p;
+			return;
 		}
 
 		p._state = parent._state;
@@ -288,8 +288,6 @@
 		if ( p._pending ) {
 			EnqueuePending( p );
 		}
-
-		return p;
 	}
 
 	function Resolve( p, x, sync ) {
