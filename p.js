@@ -246,23 +246,34 @@
 			Resolve( new Promise(), x, false );
 	}
 
-	function Settle( p, state, value ) {
+	function Fulfill( p, value ) {
 		if ( p._state ) {
-			return p;
+			return;
 		}
 
-		p._state = state;
+		p._state = FULFILLED;
 		p._value = value;
 
-		if ( state === REJECTED && isNodeJS ) {
+		if ( p._pending ) {
+			EnqueuePending( p );
+		}
+	}
+
+	function Reject( p, reason ) {
+		if ( p._state ) {
+			return;
+		}
+
+		p._state = REJECTED;
+		p._value = reason;
+
+		if ( isNodeJS ) {
 			p._domain = process.domain;
 		}
 
 		if ( p._pending ) {
-			QueueChildren( p );
+			EnqueuePending( p );
 		}
-
-		return p;
 	}
 
 	function Propagate( parent, p ) {
@@ -275,7 +286,7 @@
 		p._domain = parent._domain;
 
 		if ( p._pending ) {
-			QueueChildren( p );
+			EnqueuePending( p );
 		}
 
 		return p;
@@ -288,7 +299,7 @@
 
 		if ( x instanceof Promise ) {
 			if ( x === p ) {
-				Settle( p, REJECTED, new TypeError("You can't resolve a promise with itself") );
+				Reject( p, new TypeError("You can't resolve a promise with itself") );
 
 			} else if ( x._state ) {
 				Propagate( x, p );
@@ -298,7 +309,7 @@
 			}
 
 		} else if ( x !== Object(x) ) {
-			Settle( p, FULFILLED, x );
+			Fulfill( p, x );
 
 		} else if ( sync ) {
 			Assimilate( p, x );
@@ -317,7 +328,7 @@
 			then = x.then;
 
 		} catch ( e1 ) {
-			Settle( p, REJECTED, e1 );
+			Reject( p, e1 );
 			return;
 		}
 
@@ -332,11 +343,11 @@
 			}
 
 		} else {
-			Settle( p, FULFILLED, x );
+			Fulfill( p, x );
 		}
 	}
 
-	function QueueChildren( p ) {
+	function EnqueuePending( p ) {
 		var pending = p._pending;
 		p._pending = null;
 
@@ -390,7 +401,7 @@
 			x = cb( value );
 
 		} catch ( e ) {
-			Settle( promise, REJECTED, e );
+			Reject( promise, e );
 			return;
 		}
 
@@ -413,7 +424,7 @@
 			reject: function( reason ) {
 				if ( !done ) {
 					done = true;
-					Settle( promise, REJECTED, reason );
+					Reject( promise, reason );
 				}
 			}
 		};
@@ -426,7 +437,9 @@
 
 	P.reject = reject;
 	function reject( reason ) {
-		return Settle( new Promise(), REJECTED, reason );
+		var promise = new Promise();
+		Reject( promise, reason );
+		return promise;
 	}
 
 	function Promise() {
@@ -491,8 +504,7 @@
 
 		} else {
 			var timeoutId = setTimeout(function() {
-				Settle( p2, REJECTED,
-					new Error(msg || "Timed out after " + ms + " ms") );
+				Reject( p2, new Error(msg || "Timed out after " + ms + " ms") );
 			}, ms);
 
 			p._always(function() {
@@ -538,7 +550,7 @@
 				p._always(function() {
 					output[ index ] = p.inspect();
 					if ( --waiting === 0 ) {
-						Settle( promise, FULFILLED, output );
+						Fulfill( promise, output );
 					}
 				});
 
@@ -548,7 +560,7 @@
 		});
 
 		if ( waiting === 0 ) {
-			Settle( promise, FULFILLED, output );
+			Fulfill( promise, output );
 		}
 
 		return promise;
