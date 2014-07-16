@@ -91,7 +91,8 @@
 			var stacks = [ filterStackString( error.stack, 0 ) ];
 
 			var trace = currentTrace;
-			while ( trace ) {
+			var limit = 512;
+			while ( trace && --limit ) {
 				var stack = trace.stack && filterStackString( trace.stack, 2 );
 				if ( stack ) {
 					stacks.push( stack );
