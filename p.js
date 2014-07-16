@@ -82,14 +82,15 @@
 
 	var STACK_JUMP_SEPARATOR = "\nFrom previous event:\n";
 
-	function makeStackTraceLong( error, trace ) {
-		if ( trace &&
+	function makeStackTraceLong( error ) {
+		if (
 			error instanceof Error &&
 			error.stack &&
 			error.stack.indexOf(STACK_JUMP_SEPARATOR) === -1
 		) {
 			var stacks = [ filterStackString( error.stack, 0 ) ];
 
+			var trace = currentTrace;
 			while ( trace ) {
 				var stack = trace.stack && filterStackString( trace.stack, 2 );
 				if ( stack ) {
@@ -350,8 +351,8 @@
 			return;
 		}
 
-		if ( p._trace ) {
-			makeStackTraceLong( reason, p._trace );
+		if ( currentTrace ) {
+			makeStackTraceLong( reason );
 		}
 
 		p._state = REJECTED;
