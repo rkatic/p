@@ -4,6 +4,7 @@
  * https://github.com/rkatic/p/blob/master/LICENSE
  *
  * High-priority-tasks code-portion based on https://github.com/kriskowal/asap
+ * Long-Stack-Support code-portion based on https://github.com/kriskowal/q
  */
 ;(function( factory ){
 	// CommonJS
@@ -20,6 +21,89 @@
 	}
 })(function() {
 	"use strict";
+
+	var pStartingLine = captureLine(),
+		pFileName,
+		currentTrace = null;
+
+	function getFileNameAndLineNumber( stackLine ) {
+		var m =
+			/at .+ \((.+):(\d+):(?:\d+)\)$/.exec( stackLine ) ||
+			/at ([^ ]+):(\d+):(?:\d+)$/.exec( stackLine ) ||
+			/.*@(.+):(\d+)$/.exec( stackLine );
+
+		return m ? { fileName: m[1], lineNumber: Number(m[2]) } : null;
+	}
+
+	function captureLine() {
+		var stack = new Error().stack;
+		if ( !stack ) {
+			return 0;
+		}
+
+		var lines = stack.split("\n");
+		var firstLine = lines[0].indexOf("@") > 0 ? lines[1] : lines[2];
+		var pos = getFileNameAndLineNumber( firstLine );
+		if ( !pos ) {
+			return 0;
+		}
+
+		pFileName = pos.fileName;
+		return pos.lineNumber;
+	}
+
+	function filterStackString( stack, ignoreFirstLines ) {
+		var lines = stack.split("\n");
+		var goodLines = [];
+
+		for ( var i = ignoreFirstLines|0, l = lines.length; i < l; ++i ) {
+			var line = lines[i];
+
+			if ( line && !isNodeFrame(line) && !isInternalFrame(line) ) {
+				goodLines.push( line );
+			}
+		}
+
+		return goodLines.join("\n");
+	}
+
+	function isNodeFrame( stackLine ) {
+		return stackLine.indexOf("(module.js:") !== -1 ||
+			   stackLine.indexOf("(node.js:") !== -1;
+	}
+
+	function isInternalFrame( stackLine ) {
+		var pos = getFileNameAndLineNumber( stackLine );
+		return !!pos &&
+			pos.fileName === pFileName &&
+			pos.lineNumber >= pStartingLine &&
+			pos.lineNumber <= pEndingLine;
+	}
+
+	var STACK_JUMP_SEPARATOR = "\nFrom previous event:\n";
+
+	function makeStackTraceLong( error, trace ) {
+		if ( trace &&
+			error instanceof Error &&
+			error.stack &&
+			error.stack.indexOf(STACK_JUMP_SEPARATOR) === -1
+		) {
+			var stacks = [ filterStackString( error.stack, 0 ) ];
+
+			while ( trace ) {
+				var stack = trace.stack && filterStackString( trace.stack, 1 );
+				if ( stack ) {
+					stacks.push( stack );
+				}
+				trace = trace.parent;
+			}
+
+			var longStack = stacks.join(STACK_JUMP_SEPARATOR);
+			error.stack = longStack;
+		}
+	}
+
+	//__________________________________________________________________________
 
 	var
 		isNodeJS = ot(typeof process) && process != null &&
@@ -246,6 +330,8 @@
 			Resolve( new Promise(), x, false );
 	}
 
+	P.longStackSupport = false;
+
 	function Fulfill( p, value ) {
 		if ( p._state ) {
 			return;
@@ -262,6 +348,10 @@
 	function Reject( p, reason ) {
 		if ( p._state ) {
 			return;
+		}
+
+		if ( p._trace ) {
+			makeStackTraceLong( reason, p._trace );
 		}
 
 		p._state = REJECTED;
@@ -381,6 +471,12 @@
 			return;
 		}
 
+		var trace = child._trace;
+		if ( trace ) {
+			var prevTrace = currentTrace;
+			currentTrace = trace;
+		}
+
 		var domain = parent._domain || child._domain;
 
 		if ( domain ) {
@@ -389,6 +485,10 @@
 
 		} else {
 			HandleCallback( cb, child, parent._value );
+		}
+
+		if ( trace ) {
+			currentTrace = prevTrace;
 		}
 	}
 
@@ -447,10 +547,27 @@
 		this._cb = null;
 		this._eb = null;
 		this._pending = null;
+		this._trace = null;
 	}
+
+	//function getStack() {
+	//	try {
+	//		throw new Error();
+	//
+	//	} catch ( e ) {
+	//		return e.stack;
+	//	}
+	//}
 
 	Promise.prototype.then = function( onFulfilled, onRejected ) {
 		var promise = new Promise();
+
+		if ( P.longStackSupport ) {
+			promise._trace = {
+				parent: currentTrace,
+				stack: new Error().stack
+			};
+		}
 
 		promise._cb = typeof onFulfilled === "function" ? onFulfilled : null;
 		promise._eb = typeof onRejected === "function" ? onRejected : null;
@@ -607,6 +724,8 @@
 	P.onerror = null;
 
 	P.nextTick = asap;
+
+	var pEndingLine = captureLine();
 
 	return P;
 });
