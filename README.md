@@ -27,6 +27,7 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `P.all(promises)`
 - `P.allSettled(promises)`
 - `P.onerror`
+- `P.longStackSupport`
 - `P.nextTick(callback)`
 - `deferred.promise`
 - `deferred.resolve(value)`
