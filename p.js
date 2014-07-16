@@ -91,7 +91,7 @@
 			var stacks = [ filterStackString( error.stack, 0 ) ];
 
 			while ( trace ) {
-				var stack = trace.stack && filterStackString( trace.stack, 1 );
+				var stack = trace.stack && filterStackString( trace.stack, 2 );
 				if ( stack ) {
 					stacks.push( stack );
 				}
