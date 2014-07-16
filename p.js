@@ -603,6 +603,19 @@
 		}, eb);
 	};
 
+	function _setTimeout( cb, ms ) {
+		if ( currentTrace ) {
+			var trace = currentTrace;
+			return setTimeout(function() {
+				currentTrace = trace;
+				cb();
+				currentTrace = null;
+			}, ms);
+		}
+
+		return setTimeout( cb, ms );
+	}
+
 	Promise.prototype.timeout = function( ms, msg ) {
 		var p = this;
 		var p2 = new Promise();
@@ -611,7 +624,7 @@
 			Propagate( p, p2 );
 
 		} else {
-			var timeoutId = setTimeout(function() {
+			var timeoutId = _setTimeout(function() {
 				Reject( p2, new Error(msg || "Timed out after " + ms + " ms") );
 			}, ms);
 
@@ -628,7 +641,7 @@
 		var d = defer();
 
 		this.then(function( value ) {
-			setTimeout(function() {
+			_setTimeout(function() {
 				d.resolve( value );
 			}, ms);
 		}, d.reject);
