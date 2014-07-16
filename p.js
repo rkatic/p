@@ -141,9 +141,10 @@
 
 	function TaskNode() {
 		this.task = null;
-		this.domain = null;
 		this.a = null;
 		this.b = null;
+		this.domain = null;
+		this.trace = null;
 		this.next = null;
 	}
 
@@ -160,7 +161,6 @@
 	function flush() {
 		while ( head !== tail ) {
 			head = head.next;
-			var task = head.task;
 
 			if ( nFreeTaskNodes >= 1024 ) {
 				tail.next = tail.next.next;
@@ -168,27 +168,32 @@
 				++nFreeTaskNodes;
 			}
 
+			currentTrace = head.trace;
+
 			if ( head.domain ) {
-				runInDomain( head.domain, task, head.a, head.b, void 0 );
+				runInDomain( head.domain, head.task, head.a, head.b, void 0 );
 				head.domain = null;
 
 			} else {
-				task( head.a, head.b );
+				(1,head.task)( head.a, head.b );
 			}
 
 			head.task = null;
 			head.a = null;
 			head.b = null;
+			head.trace = null;
 		}
 
 		flushing = false;
+		currentTrace = null;
 	}
 
 	function beforeThrow() {
 		head.task = null;
-		head.domain = null;
 		head.a = null;
 		head.b = null;
+		head.domain = null;
+		head.trace = null;
 		requestFlush();
 	}
 
@@ -201,7 +206,7 @@
 		domain.exit();
 	}
 
-	function queueTask( setDomain, task, a, b ) {
+	function queueTask( setDomain, task, a, b, trace ) {
 		var node = tail.next;
 
 		if ( node === head ) {
@@ -217,6 +222,7 @@
 		node.task = task;
 		node.a = a;
 		node.b = b;
+		node.trace = trace || currentTrace;
 
 		if ( setDomain && isNodeJS ) {
 			node.domain = process.domain;
@@ -297,7 +303,11 @@
 
 
 	function asap( task ) {
-		queueTask( true, tryCall, task, handleError );
+		var trace = P.longStackSupport ? {
+			parent: currentTrace,
+			stack: new Error().stack
+		} : null;
+		queueTask( true, tryCall, task, handleError, trace );
 	}
 
 	//__________________________________________________________________________
@@ -405,7 +415,7 @@
 			Assimilate( p, x );
 
 		} else {
-			queueTask( true, Assimilate, p, x );
+			queueTask( true, Assimilate, p, x, null );
 		}
 
 		return p;
@@ -442,12 +452,12 @@
 		p._pending = null;
 
 		if ( pending instanceof Promise ) {
-			queueTask( false, Then, p, pending );
+			queueTask( false, Then, p, pending, pending._trace );
 			return;
 		}
 
 		for ( var i = 0, l = pending.length; i < l; ++i ) {
-			queueTask( false, Then, p, pending[i] );
+			queueTask( false, Then, p, pending[i], pending[i]._trace );
 		}
 	}
 
@@ -473,12 +483,6 @@
 			return;
 		}
 
-		var trace = child._trace;
-		if ( trace ) {
-			var prevTrace = currentTrace;
-			currentTrace = trace;
-		}
-
 		var domain = parent._domain || child._domain;
 
 		if ( domain ) {
@@ -487,10 +491,6 @@
 
 		} else {
 			HandleCallback( cb, child, parent._value );
-		}
-
-		if ( trace ) {
-			currentTrace = prevTrace;
 		}
 	}
 
@@ -571,7 +571,7 @@
 			Follow( promise, this );
 
 		} else {
-			queueTask( false, Then, this, promise );
+			queueTask( false, Then, this, promise, promise._trace );
 		}
 
 		return promise;
