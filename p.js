@@ -647,8 +647,14 @@
 
 	P.allSettled = allSettled;
 	function allSettled( input ) {
-		var waiting = 0;
 		var promise = new Promise();
+
+		if ( typeof input.length !== "number" ) {
+			Reject( promise, new TypeError("input not array-like") );
+			return promise;
+		}
+
+		var waiting = 0;
 		var output = new Array( input.length );
 
 		forEach( input, function( x, index ) {
@@ -676,8 +682,14 @@
 
 	P.all = all;
 	function all( input ) {
-		var waiting = 0;
 		var d = defer();
+
+		if ( typeof input.length !== "number" ) {
+			d.reject( new TypeError("input not array-like") );
+			return d.promise;
+		}
+
+		var waiting = 0;
 		var output = new Array( input.length );
 
 		forEach( input, function( x, index ) {
