@@ -550,15 +550,6 @@
 		this._trace = null;
 	}
 
-	//function getStack() {
-	//	try {
-	//		throw new Error();
-	//
-	//	} catch ( e ) {
-	//		return e.stack;
-	//	}
-	//}
-
 	Promise.prototype.then = function( onFulfilled, onRejected ) {
 		var promise = new Promise();
 
