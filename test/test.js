@@ -269,6 +269,37 @@ describe("delay", function() {
 	});
 });
 
+describe("nodeify", function() {
+
+	it("calls back with a resolution", function( done ) {
+		P( 7 ).nodeify(function( error, value ) {
+			expect( error ).to.be( null );
+			expect( value ).to.be( 7 );
+			done();
+		});
+	});
+
+	it("calls back with an error", function( done ) {
+		P.reject( 13 ).nodeify(function( error, value ) {
+			expect( error ).to.be( 13 );
+			expect( value ).to.be( void 0 );
+			done();
+		});
+	});
+
+	it("forwards a fullfilment", function() {
+		return P( 5 ).nodeify( void 0 ).then(function( value ) {
+			expect( value ).to.be( 5 );
+		});
+	});
+
+	it("forwards a rejection", function() {
+		return P.reject( 3 ).nodeify( void 0 ).then(fail, function( reason ) {
+			expect( reason ).to.be( 3 );
+		});
+	});
+});
+
 if ( isNodeJS && !/v0\.8\./.test(process.version) ) describe("domain", function() {
 
 	var domain = require("domain");

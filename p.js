@@ -655,12 +655,32 @@
 		return d.promise;
 	};
 
+	Promise.prototype.all = function() {
+		return this.then( all );
+	};
+
+	Promise.prototype.allSettled = function() {
+		return this.then( allSettled );
+	};
+
 	Promise.prototype.inspect = function() {
 		switch ( this._state ) {
 			case PENDING:   return { state: "pending" };
 			case FULFILLED: return { state: "fulfilled", value: this._value };
 			case REJECTED:  return { state: "rejected", reason: this._value };
 			default: throw new TypeError("invalid state");
+		}
+	};
+
+	Promise.prototype.nodeify = function( nodeback ) {
+		if ( nodeback ) {
+			this.done(function( value ) {
+				nodeback( null, value );
+			}, nodeback);
+			return void 0;
+		
+		} else {
+			return this;
 		}
 	};
 

@@ -35,6 +35,9 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `promise.then(onFulfilled, onRejected)`
 - `promise.done(onFulfilled, onRejected)`
 - `promise.spread(onFulfilled, onRejected)`
+- `promise.all()` :new:
+- `promise.allSettled()` :new:
 - `promise.timeout(ms, opt_timeoutMsg)`
 - `promise.delay(ms)`
 - `promise.inspect()`
+- `promise.nodeify(nodeback)` :new:
