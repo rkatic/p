@@ -206,7 +206,18 @@
 		domain.exit();
 	}
 
-	function queueTask( setDomain, task, a, b, trace ) {
+	function queueTask( task, a, b ) {
+		var domain = isNodeJS ? process.domain : null;
+
+		var trace = P.longStackSupport ? {
+			parent: currentTrace,
+			stack: new Error().stack
+		} : null;
+
+		queueTask_( task, a, b, domain, trace );
+	}
+
+	function queueTask_( task, a, b, domain, trace ) {
 		var node = tail.next;
 
 		if ( node === head ) {
@@ -222,11 +233,8 @@
 		node.task = task;
 		node.a = a;
 		node.b = b;
-		node.trace = trace || currentTrace;
-
-		if ( setDomain && isNodeJS ) {
-			node.domain = process.domain;
-		}
+		node.domain = domain;
+		node.trace = trace;
 
 		if ( !flushing ) {
 			flushing = true;
@@ -303,11 +311,7 @@
 
 
 	function asap( task ) {
-		var trace = P.longStackSupport ? {
-			parent: currentTrace,
-			stack: new Error().stack
-		} : null;
-		queueTask( true, tryCall, task, handleError, trace );
+		queueTask( tryCall, task, handleError );
 	}
 
 	//__________________________________________________________________________
@@ -415,7 +419,7 @@
 			Assimilate( p, x );
 
 		} else {
-			queueTask( true, Assimilate, p, x, null );
+			queueTask( Assimilate, p, x );
 		}
 
 		return p;
@@ -452,12 +456,12 @@
 		p._pending = null;
 
 		if ( pending instanceof Promise ) {
-			queueTask( false, Then, p, pending, pending._trace );
+			queueTask_( Then, p, pending, null, pending._trace );
 			return;
 		}
 
 		for ( var i = 0, l = pending.length; i < l; ++i ) {
-			queueTask( false, Then, p, pending[i], pending[i]._trace );
+			queueTask_( Then, p, pending[i], null, pending[i]._trace );
 		}
 	}
 
@@ -565,13 +569,15 @@
 		promise._cb = typeof onFulfilled === "function" ? onFulfilled : null;
 		promise._eb = typeof onRejected === "function" ? onRejected : null;
 
-		promise._domain = isNodeJS ? process.domain : null;
+		if ( isNodeJS ) {
+			promise._domain = process.domain;
+		}
 
 		if ( this._state === PENDING ) {
 			Follow( promise, this );
 
 		} else {
-			queueTask( false, Then, this, promise, promise._trace );
+			queueTask_( Then, this, promise, null, promise._trace );
 		}
 
 		return promise;
