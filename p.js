@@ -602,10 +602,8 @@
 	};
 
 	Promise.prototype.spread = function( cb, eb ) {
-		return this.then(cb && function( array ) {
-			return all( array ).then(function( values ) {
-				return apply.call( cb, void 0, values );
-			}, eb);
+		return this.then( all ).then(function( args ) {
+			return apply.call( cb, void 0, args );
 		}, eb);
 	};
 
@@ -678,7 +676,7 @@
 				nodeback( null, value );
 			}, nodeback);
 			return void 0;
-		
+
 		} else {
 			return this;
 		}
@@ -752,6 +750,13 @@
 		}
 
 		return d.promise;
+	}
+
+	P.spread = spread;
+	function spread( value, cb, eb ) {
+		return all( value ).then(function( args ) {
+			return cb.apply( void 0, args );
+		}, eb);
 	}
 
 	P.promised = promised;
