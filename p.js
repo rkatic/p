@@ -171,7 +171,7 @@
 			currentTrace = head.trace;
 
 			if ( head.domain ) {
-				runInDomain( head.domain, head.task, head.a, head.b, void 0 );
+				runInDomain( head.domain, head.task, head.a, head.b );
 				head.domain = null;
 
 			} else {
@@ -197,12 +197,12 @@
 		requestFlush();
 	}
 
-	function runInDomain( domain, task, a, b, c ) {
+	function runInDomain( domain, task, a, b ) {
 		if ( domain._disposed ) {
 			return;
 		}
 		domain.enter();
-		task( a, b, c );
+		task( a, b );
 		domain.exit();
 	}
 
