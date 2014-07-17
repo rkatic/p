@@ -300,18 +300,18 @@
 		}
 	}
 
-	function tryCall( toCall, onError ) {
+	function tryCall( toCall, _ ) {
 		try {
 			toCall.call();
 
 		} catch ( e ) {
-			onError( e );
+			handleError( e );
 		}
 	}
 
 
 	function asap( task ) {
-		queueTask( tryCall, task, handleError );
+		queueTask( tryCall, task, null );
 	}
 
 	//__________________________________________________________________________
@@ -323,17 +323,21 @@
 
 	function ReportIfRejected( p, _ ) {
 		if ( p._state === REJECTED ) {
-			var error = p._value;
-			p = null;
+			queueTask_( reportError, p._value, null, p._domain, null );
+		}
+	}
 
-			asap(function() {
-				if ( P.onerror ) {
-					(1,P.onerror)( error );
+	function reportError( error ) {
+		if ( P.onerror ) {
+			try {
+				(1,P.onerror)( error );
 
-				} else {
-					throw error;
-				}
-			});
+			} catch ( e ) {
+				handleError( e );
+			}
+
+		} else {
+			handleError( error );
 		}
 	}
 
@@ -456,11 +460,16 @@
 			pending( p, p._index );
 
 		} else if ( pending instanceof Promise ) {
-			queueTask_( Then, p, pending, null, pending._trace );
+			queueTask_(
+				Then, p, pending,
+				p._domain || pending._domain,
+				pending._trace
+			);
 
 		} else {
-			HandlePending( p, pending[0] );
-			HandlePending( p, pending[1] );
+			for ( var i = 0, l = pending.length; i < l; ++i ) {
+				HandlePending( p, pending[i] );
+			}
 		}
 	}
 
@@ -468,8 +477,14 @@
 		if ( p._state ) {
 			HandlePending( p, pending );
 
+		} else if ( !p._pending ) {
+			p._pending = pending;
+
+		} else if ( p._pending instanceof Array ) {
+			p._pending.push( pending );
+
 		} else {
-			p._pending = p._pending ? [ p._pending, pending ] : pending;
+			p._pending = [ p._pending, pending ];
 		}
 	}
 
@@ -482,37 +497,29 @@
 			p._index = index;
 
 		} else {
-			var pending = index === p._index ? onSettled :
+			OnSettled(index === p._index ? onSettled :
 				function( p, i ) {
 					onSettled( p, index );
-				};
-
-			p._pending = [ p._pending, pending ];
+				}
+			);
 		}
 	}
 
-	function Then( parent, child ) {
-		var cb = parent._state === FULFILLED ? child._cb : child._eb;
-		child._cb = null;
-		child._eb = null;
+	function Then( parent, promise ) {
+		var cb = parent._state === FULFILLED ? promise._cb : promise._eb;
+		promise._cb = null;
+		promise._eb = null;
+		promise._domain = null;
 
-		if ( !cb ) {
-			Propagate( parent, child );
-			return;
-		}
-
-		var domain = parent._domain || child._domain;
-
-		if ( domain ) {
-			child._domain = null;
-			runInDomain( domain, HandleCallback, cb, child, parent._value );
+		if ( cb === null ) {
+			Propagate( parent, promise );
 
 		} else {
-			HandleCallback( cb, child, parent._value );
+			HandleCallback( promise, cb, parent._value );
 		}
 	}
 
-	function HandleCallback( cb, promise, value ) {
+	function HandleCallback( promise, cb, value ) {
 		var x;
 
 		try {
