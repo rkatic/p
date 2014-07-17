@@ -300,6 +300,42 @@ describe("nodeify", function() {
 	});
 });
 
+describe("promised", function() {
+
+	var sum = P.promised(function( a, b ) {
+		return a + b;
+	});
+
+	var inc = P.promised(function( n ) {
+		return this + n;
+	});
+
+	it("resolves promised arguments", function() {
+		return sum( P(1), 2 ).then(function( res ) {
+			expect( res ).to.be( 3 );
+		});
+	});
+
+	it("resolves promised `this`", function() {
+		return inc.call( P(4), 1 ).then(function( res ) {
+			expect( res ).to.be( 5 );
+		});
+	});
+
+	it("is rejected if an argument is rejected", function() {
+		return sum( P.reject(1), 2 ).then(fail, function( e ) {
+			expect( e ).to.be( 1 );
+		});
+	});
+
+	it("is rejected if `this` is rejected", function() {
+		return inc.call( P.reject(1), P(2) ).then(fail, function( e ) {
+			expect( e ).to.be( 1 );
+		});
+	});
+
+});
+
 if ( isNodeJS && !/v0\.8\./.test(process.version) ) describe("domain", function() {
 
 	var domain = require("domain");

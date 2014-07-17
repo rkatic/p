@@ -40,4 +40,5 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `promise.timeout(ms, opt_timeoutMsg)`
 - `promise.delay(ms)`
 - `promise.inspect()`
+- `promise.promised(aFunction)` :new:
 - `promise.nodeify(nodeback)` :new:

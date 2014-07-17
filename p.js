@@ -776,18 +776,24 @@
 	P.spread = spread;
 	function spread( value, cb, eb ) {
 		return all( value ).then(function( args ) {
-			return cb.apply( void 0, args );
+			return apply.call( cb, void 0, args );
 		}, eb);
 	}
 
 	P.promised = promised;
 	function promised( f ) {
 		function onFulfilled( thisAndArgs ) {
-			return apply.apply( f, thisAndArgs );
+			return call.apply( f, thisAndArgs );
 		}
 
 		return function() {
-			return all([ this, all(arguments) ]).then( onFulfilled );
+			var len = arguments.length;
+			var thisAndArgs = new Array( len + 1 );
+			thisAndArgs[0] = this;
+			for ( var i = 0; i < len; ++i ) {
+				thisAndArgs[ i + 1 ] = arguments[ i ];
+			}
+			return all( thisAndArgs ).then( onFulfilled );
 		};
 	}
 
