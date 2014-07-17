@@ -300,18 +300,18 @@
 		}
 	}
 
-	function tryCall( toCall, _ ) {
+	function tryCall( toCall, onError ) {
 		try {
 			toCall.call();
 
 		} catch ( e ) {
-			handleError( e );
+			onError( e );
 		}
 	}
 
 
 	function asap( task ) {
-		queueTask( tryCall, task, null );
+		queueTask( tryCall, task, handleError );
 	}
 
 	//__________________________________________________________________________
@@ -321,23 +321,23 @@
 	var FULFILLED = 1;
 	var REJECTED = 2;
 
-	function ReportIfRejected( p, _ ) {
+	function ReportIfRejected( p ) {
 		if ( p._state === REJECTED ) {
-			queueTask_( reportError, p._value, null, p._domain, null );
+			queueTask_( reportError, p._value, handleError, p._domain, null );
 		}
 	}
 
-	function reportError( error ) {
+	function reportError( error, onError ) {
 		if ( P.onerror ) {
 			try {
 				(1,P.onerror)( error );
 
 			} catch ( e ) {
-				handleError( e );
+				onError( e );
 			}
 
 		} else {
-			handleError( error );
+			onError( error );
 		}
 	}
 
@@ -505,32 +505,32 @@
 		}
 	}
 
-	function Then( parent, promise ) {
-		var cb = parent._state === FULFILLED ? promise._cb : promise._eb;
-		promise._cb = null;
-		promise._eb = null;
-		promise._domain = null;
+	function Then( parent, p ) {
+		var cb = parent._state === FULFILLED ? p._cb : p._eb;
+		p._cb = null;
+		p._eb = null;
+		p._domain = null;
 
 		if ( cb === null ) {
-			Propagate( parent, promise );
+			Propagate( parent, p );
 
 		} else {
-			HandleCallback( promise, cb, parent._value );
+			HandleCallback( p, cb, parent._value );
 		}
 	}
 
-	function HandleCallback( promise, cb, value ) {
+	function HandleCallback( p, cb, value ) {
 		var x;
 
 		try {
 			x = cb( value );
 
 		} catch ( e ) {
-			Reject( promise, e );
+			Reject( p, e );
 			return;
 		}
 
-		Resolve( promise, x, true );
+		Resolve( p, x, true );
 	}
 
 	function resolverFor( promise ) {
