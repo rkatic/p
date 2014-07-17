@@ -588,12 +588,7 @@
 			promise._domain = process.domain;
 		}
 
-		if ( this._state === PENDING ) {
-			OnSettled( this, promise );
-
-		} else {
-			queueTask_( Then, this, promise, null, promise._trace );
-		}
+		OnSettled( this, promise );
 
 		return promise;
 	};
@@ -619,26 +614,25 @@
 	};
 
 	Promise.prototype.timeout = function( ms, msg ) {
-		var p = this;
-		var p2 = new Promise();
+		var promise = new Promise();
 
-		if ( p._state !== PENDING ) {
-			Propagate( p, p2 );
+		if ( this._state !== PENDING ) {
+			Propagate( this, promise );
 
 		} else {
 			var trace = currentTrace;
 			var timeoutId = setTimeout(function() {
 				currentTrace = trace;
-				Reject( p2, new Error(msg || "Timed out after " + ms + " ms") );
+				Reject( promise, new Error(msg || "Timed out after " + ms + " ms") );
 			}, ms);
 
-			OnSettled( p, function( p ) {
+			OnSettled( this, function( p ) {
 				clearTimeout( timeoutId );
-				Propagate( p, p2 );
+				Propagate( p, promise );
 			});
 		}
 
-		return p2;
+		return promise;
 	};
 
 	Promise.prototype.delay = function( ms ) {
@@ -711,7 +705,7 @@
 					output[ i ] = p.inspect();
 
 				} else {
-					++waiting
+					++waiting;
 					OnSettledAt( p, i, onSettled );
 				}
 			}
@@ -756,6 +750,7 @@
 
 				} else if ( p._state === REJECTED ) {
 					Propagate( p, promise );
+					break;
 
 				} else {
 					++waiting;
