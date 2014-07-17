@@ -317,28 +317,25 @@
 	//__________________________________________________________________________
 
 
-	function forEach( arr, cb ) {
-		for ( var i = 0, l = arr.length; i < l; ++i ) {
-			if ( i in arr ) {
-				cb( arr[i], i );
-			}
-		}
-	}
-
-	function reportError( error ) {
-		asap(function() {
-			if ( P.onerror ) {
-				P.onerror.call( null, error );
-
-			} else {
-				throw error;
-			}
-		});
-	}
-
 	var PENDING = 0;
 	var FULFILLED = 1;
 	var REJECTED = 2;
+
+	function ReportIfRejected( p, _ ) {
+		if ( p._state === REJECTED ) {
+			var error = p._value;
+			p = null;
+
+			asap(function() {
+				if ( P.onerror ) {
+					(1,P.onerror)( error );
+
+				} else {
+					throw error;
+				}
+			});
+		}
+	}
 
 	function P( x ) {
 		return x instanceof Promise ?
@@ -357,7 +354,8 @@
 		p._value = value;
 
 		if ( p._pending ) {
-			EnqueuePending( p );
+			HandlePending( p, p._pending );
+			p._pending = null;
 		}
 	}
 
@@ -378,7 +376,8 @@
 		}
 
 		if ( p._pending ) {
-			EnqueuePending( p );
+			HandlePending( p, p._pending );
+			p._pending = null;
 		}
 	}
 
@@ -392,7 +391,8 @@
 		p._domain = parent._domain;
 
 		if ( p._pending ) {
-			EnqueuePending( p );
+			HandlePending( p, p._pending );
+			p._pending = null;
 		}
 	}
 
@@ -409,7 +409,7 @@
 				Propagate( x, p );
 
 			} else {
-				Follow( p, x );
+				OnSettled( x, p );
 			}
 
 		} else if ( x !== Object(x) ) {
@@ -451,29 +451,43 @@
 		}
 	}
 
-	function EnqueuePending( p ) {
-		var pending = p._pending;
-		p._pending = null;
+	function HandlePending( p, pending ) {
+		if ( typeof pending === "function" ) {
+			pending( p, p._index );
 
-		if ( pending instanceof Promise ) {
+		} else if ( pending instanceof Promise ) {
 			queueTask_( Then, p, pending, null, pending._trace );
-			return;
-		}
 
-		for ( var i = 0, l = pending.length; i < l; ++i ) {
-			queueTask_( Then, p, pending[i], null, pending[i]._trace );
+		} else {
+			HandlePending( p, pending[0] );
+			HandlePending( p, pending[1] );
 		}
 	}
 
-	function Follow( child, p ) {
-		if ( !p._pending ) {
-			p._pending = child;
-
-		} else if ( p._pending instanceof Promise ) {
-			p._pending = [ p._pending, child ];
+	function OnSettled( p, pending ) {
+		if ( p._state ) {
+			HandlePending( p, pending );
 
 		} else {
-			p._pending.push( child );
+			p._pending = p._pending ? [ p._pending, pending ] : pending;
+		}
+	}
+
+	function OnSettledAt( p, index, onSettled ) {
+		if ( p._state ) {
+			onSettled( p, index );
+
+		} else if ( !p._pending ) {
+			p._pending = onSettled;
+			p._index = index;
+
+		} else {
+			var pending = index === p._index ? onSettled :
+				function( p, i ) {
+					onSettled( p, index );
+				};
+
+			p._pending = [ p._pending, pending ];
 		}
 	}
 
@@ -552,6 +566,7 @@
 		this._domain = null;
 		this._cb = null;
 		this._eb = null;
+		this._index = 0;
 		this._pending = null;
 		this._trace = null;
 	}
@@ -574,7 +589,7 @@
 		}
 
 		if ( this._state === PENDING ) {
-			Follow( promise, this );
+			OnSettled( this, promise );
 
 		} else {
 			queueTask_( Then, this, promise, null, promise._trace );
@@ -590,15 +605,11 @@
 			p = p.then( cb, eb );
 		}
 
-		p.then( null, reportError );
+		OnSettled( p, ReportIfRejected );
 	};
 
 	Promise.prototype.fail = function( eb ) {
 		return this.then( null, eb );
-	};
-
-	Promise.prototype._always = function( cb ) {
-		return this.then( cb, cb );
 	};
 
 	Promise.prototype.spread = function( cb, eb ) {
@@ -606,19 +617,6 @@
 			return apply.call( cb, void 0, args );
 		}, eb);
 	};
-
-	function _setTimeout( cb, ms ) {
-		if ( currentTrace ) {
-			var trace = currentTrace;
-			return setTimeout(function() {
-				currentTrace = trace;
-				cb();
-				currentTrace = null;
-			}, ms);
-		}
-
-		return setTimeout( cb, ms );
-	}
 
 	Promise.prototype.timeout = function( ms, msg ) {
 		var p = this;
@@ -628,11 +626,13 @@
 			Propagate( p, p2 );
 
 		} else {
-			var timeoutId = _setTimeout(function() {
+			var trace = currentTrace;
+			var timeoutId = setTimeout(function() {
+				currentTrace = trace;
 				Reject( p2, new Error(msg || "Timed out after " + ms + " ms") );
 			}, ms);
 
-			p._always(function() {
+			OnSettled( p, function( p ) {
 				clearTimeout( timeoutId );
 				Propagate( p, p2 );
 			});
@@ -645,7 +645,9 @@
 		var d = defer();
 
 		this.then(function( value ) {
-			_setTimeout(function() {
+			var trace = currentTrace;
+			setTimeout(function() {
+				currentTrace = trace;
 				d.resolve( value );
 			}, ms);
 		}, d.reject);
@@ -685,30 +687,35 @@
 	P.allSettled = allSettled;
 	function allSettled( input ) {
 		var promise = new Promise();
+		var len = input.length;
 
-		if ( typeof input.length !== "number" ) {
+		if ( typeof len !== "number" ) {
 			Reject( promise, new TypeError("input not array-like") );
 			return promise;
 		}
 
 		var waiting = 0;
-		var output = new Array( input.length );
+		var output = new Array( len );
 
-		forEach( input, function( x, index ) {
-			var p = P( x );
-			if ( p._state === PENDING ) {
-				++waiting;
-				p._always(function() {
-					output[ index ] = p.inspect();
-					if ( --waiting === 0 ) {
-						Fulfill( promise, output );
-					}
-				});
-
-			} else {
-				output[ index ] = p.inspect();
+		function onSettled( p, i ) {
+			output[ i ] = p.inspect();
+			if ( --waiting === 0 ) {
+				Fulfill( promise, output );
 			}
-		});
+		}
+
+		for ( var i = 0; i < len; ++i ) {
+			if ( i in input ) {
+				var p = P( input[i] );
+				if ( p._state ) {
+					output[ i ] = p.inspect();
+
+				} else {
+					++waiting
+					OnSettledAt( p, i, onSettled );
+				}
+			}
+		}
 
 		if ( waiting === 0 ) {
 			Fulfill( promise, output );
@@ -719,37 +726,49 @@
 
 	P.all = all;
 	function all( input ) {
-		var d = defer();
+		var promise = new Promise();
+		var len = input.length;
 
-		if ( typeof input.length !== "number" ) {
-			d.reject( new TypeError("input not array-like") );
-			return d.promise;
+		if ( typeof len !== "number" ) {
+			Reject( promise, new TypeError("input not array-like") );
+			return promise;
 		}
 
 		var waiting = 0;
-		var output = new Array( input.length );
+		var output = new Array( len );
 
-		forEach( input, function( x, index ) {
-			var p = P( x );
-			if ( p._state === FULFILLED ) {
-				output[ index ] = p._value;
-
-			} else {
-				++waiting;
-				p.then(function( value ) {
-					output[ index ] = value;
-					if ( --waiting === 0 ) {
-						d.resolve( output );
-					}
-				}, d.reject);
+		function onSettled( p, i ) {
+			if ( p._state === REJECTED ) {
+				Propagate( p, promise );
+				return;
 			}
-		});
-
-		if ( waiting === 0 ) {
-			d.resolve( output );
+			output[ i ] = p._value;
+			if ( --waiting === 0 ) {
+				Fulfill( promise, output );
+			}
 		}
 
-		return d.promise;
+		for ( var i = 0; i < len; ++i ) {
+			if ( i in input ) {
+				var p = P( input[i] );
+				if ( p._state === FULFILLED ) {
+					output[ i ] = p._value;
+
+				} else if ( p._state === REJECTED ) {
+					Propagate( p, promise );
+
+				} else {
+					++waiting;
+					OnSettledAt( p, i, onSettled );
+				}
+			}
+		}
+
+		if ( waiting === 0 ) {
+			Fulfill( promise, output );
+		}
+
+		return promise;
 	}
 
 	P.spread = spread;
