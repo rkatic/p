@@ -26,6 +26,25 @@
 		pFileName,
 		currentTrace = null;
 
+	function getTrace() {
+		var stack = new Error().stack;
+		if ( !stack ) {
+			return null;
+		}
+
+		var stacks = [ filterStackString( stack, 1 ) ];
+
+		if ( currentTrace ) {
+			stacks = stacks.concat( currentTrace );
+
+			if ( stacks.length === 128 ) {
+				stacks.pop();
+			}
+		}
+
+		return stacks;
+	}
+
 	function getFileNameAndLineNumber( stackLine ) {
 		var m =
 			/at .+ \(([\s\S]+):(\d+):(?:\d+)\)$/.exec( stackLine ) ||
@@ -88,20 +107,9 @@
 			error.stack &&
 			error.stack.indexOf(STACK_JUMP_SEPARATOR) === -1
 		) {
-			var stacks = [ filterStackString( error.stack, 0 ) ];
-
-			var trace = currentTrace;
-			var limit = 512;
-			while ( trace && --limit ) {
-				var stack = trace.stack && filterStackString( trace.stack, 2 );
-				if ( stack ) {
-					stacks.push( stack );
-				}
-				trace = trace.parent;
-			}
-
-			var longStack = stacks.join(STACK_JUMP_SEPARATOR);
-			error.stack = longStack;
+			error.stack = [ filterStackString( error.stack, 0 ) ]
+				.concat( currentTrace || [] )
+				.join(STACK_JUMP_SEPARATOR);
 		}
 	}
 
@@ -160,7 +168,7 @@
 
 	function flush() {
 		while ( head !== tail ) {
-			head = head.next;
+			var h = head = head.next;
 
 			if ( nFreeTaskNodes >= 1024 ) {
 				tail.next = tail.next.next;
@@ -168,20 +176,20 @@
 				++nFreeTaskNodes;
 			}
 
-			currentTrace = head.trace;
+			currentTrace = h.trace;
 
-			if ( head.domain ) {
-				runInDomain( head.domain, head.task, head.a, head.b );
-				head.domain = null;
+			if ( h.domain ) {
+				runInDomain( h.domain, h.task, h.a, h.b );
+				h.domain = null;
 
 			} else {
-				(1,head.task)( head.a, head.b );
+				(1,h.task)( h.a, h.b );
 			}
 
-			head.task = null;
-			head.a = null;
-			head.b = null;
-			head.trace = null;
+			h.task = null;
+			h.a = null;
+			h.b = null;
+			h.trace = null;
 		}
 
 		flushing = false;
@@ -207,14 +215,11 @@
 	}
 
 	function queueTask( task, a, b ) {
-		var domain = isNodeJS ? process.domain : null;
-
-		var trace = P.longStackSupport ? {
-			parent: currentTrace,
-			stack: new Error().stack
-		} : null;
-
-		queueTask_( task, a, b, domain, trace );
+		queueTask_(
+			task, a, b,
+			isNodeJS ? process.domain : null,
+			P.longStackSupport ? getTrace() : null
+		);
 	}
 
 	function queueTask_( task, a, b, domain, trace ) {
@@ -510,6 +515,7 @@
 		p._cb = null;
 		p._eb = null;
 		p._domain = null;
+		p._trace = null;
 
 		if ( cb === null ) {
 			Propagate( parent, p );
@@ -581,15 +587,12 @@
 	Promise.prototype.then = function( onFulfilled, onRejected ) {
 		var promise = new Promise();
 
-		if ( P.longStackSupport ) {
-			promise._trace = {
-				parent: currentTrace,
-				stack: new Error().stack
-			};
-		}
-
 		promise._cb = typeof onFulfilled === "function" ? onFulfilled : null;
 		promise._eb = typeof onRejected === "function" ? onRejected : null;
+
+		if ( P.longStackSupport ) {
+			promise._trace = getTrace();
+		}
 
 		if ( isNodeJS ) {
 			promise._domain = process.domain;
@@ -627,7 +630,7 @@
 			Propagate( this, promise );
 
 		} else {
-			var trace = currentTrace;
+			var trace = P.longStackSupport ? getTrace() : null;
 			var timeoutId = setTimeout(function() {
 				currentTrace = trace;
 				Reject( promise, new Error(msg || "Timed out after " + ms + " ms") );
