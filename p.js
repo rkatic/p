@@ -326,6 +326,11 @@
 	var FULFILLED = 1;
 	var REJECTED = 2;
 
+	var OP_CALL = -1;
+	var OP_THEN = -2;
+	var OP_PROPAGATE = -3;
+	var OP_MULTIPLE = -4;
+
 	function ReportIfRejected( p ) {
 		if ( p._state === REJECTED ) {
 			queueTask_( reportError, p._value, handleError, p._domain, null );
@@ -363,7 +368,7 @@
 		p._value = value;
 
 		if ( p._pending ) {
-			HandlePending( p, p._pending );
+			HandlePending( p, p._op, p._pending );
 			p._pending = null;
 		}
 	}
@@ -385,7 +390,7 @@
 		}
 
 		if ( p._pending ) {
-			HandlePending( p, p._pending );
+			HandlePending( p, p._op, p._pending );
 			p._pending = null;
 		}
 	}
@@ -400,7 +405,7 @@
 		p._domain = parent._domain;
 
 		if ( p._pending ) {
-			HandlePending( p, p._pending );
+			HandlePending( p, p._op, p._pending );
 			p._pending = null;
 		}
 	}
@@ -418,7 +423,7 @@
 				Propagate( x, p );
 
 			} else {
-				OnSettled( x, p );
+				OnSettled( x, OP_PROPAGATE, p );
 			}
 
 		} else if ( x !== Object(x) ) {
@@ -460,53 +465,53 @@
 		}
 	}
 
-	function HandlePending( p, pending ) {
-		if ( typeof pending === "function" ) {
-			pending( p, p._index );
+	function HandlePending( p, op, pending ) {
+		switch ( op ) {
+			case OP_CALL:
+				pending( p );
+				break;
 
-		} else if ( pending instanceof Promise ) {
-			queueTask_(
-				Then, p, pending,
-				p._domain || pending._domain,
-				pending._trace
-			);
+			case OP_THEN:
+				queueTask_(
+					Then, p, pending,
+					p._domain || pending._domain,
+					pending._trace
+				);
+				break;
 
-		} else {
-			for ( var i = 0, l = pending.length; i < l; ++i ) {
-				HandlePending( p, pending[i] );
-			}
+			case OP_PROPAGATE:
+				queueTask_(
+					Propagate, p, pending,
+					null,
+					null
+				);
+				break;
+
+			case OP_MULTIPLE:
+				for ( var i = 0, l = pending.length; i < l; i += 2 ) {
+					HandlePending( p, pending[i], pending[i + 1] );
+				}
+				break;
+
+			default:
+				pending( p, op );
 		}
 	}
 
-	function OnSettled( p, pending ) {
+	function OnSettled( p, op, pending ) {
 		if ( p._state ) {
-			HandlePending( p, pending );
+			HandlePending( p, op, pending );
 
 		} else if ( !p._pending ) {
 			p._pending = pending;
+			p._op = op;
 
-		} else if ( p._pending instanceof Array ) {
-			p._pending.push( pending );
-
-		} else {
-			p._pending = [ p._pending, pending ];
-		}
-	}
-
-	function OnSettledAt( p, index, onSettled ) {
-		if ( p._state ) {
-			onSettled( p, index );
-
-		} else if ( !p._pending ) {
-			p._pending = onSettled;
-			p._index = index;
+		} else if ( p._op === OP_MULTIPLE ) {
+			p._pending.push( op, pending );
 
 		} else {
-			OnSettled(index === p._index ? onSettled :
-				function( p, i ) {
-					onSettled( p, index );
-				}
-			);
+			p._pending = [ p._op, p._pending, op, pending ];
+			p._op = OP_MULTIPLE;
 		}
 	}
 
@@ -579,7 +584,7 @@
 		this._domain = null;
 		this._cb = null;
 		this._eb = null;
-		this._index = 0;
+		this._op = 0;
 		this._pending = null;
 		this._trace = null;
 	}
@@ -598,7 +603,7 @@
 			promise._domain = process.domain;
 		}
 
-		OnSettled( this, promise );
+		OnSettled( this, OP_THEN, promise );
 
 		return promise;
 	};
@@ -610,7 +615,7 @@
 			p = p.then( cb, eb );
 		}
 
-		OnSettled( p, ReportIfRejected );
+		OnSettled( p, OP_CALL, ReportIfRejected );
 	};
 
 	Promise.prototype.fail = function( eb ) {
@@ -636,7 +641,7 @@
 				Reject( promise, new Error(msg || "Timed out after " + ms + " ms") );
 			}, ms);
 
-			OnSettled( this, function( p ) {
+			OnSettled( this, OP_CALL, function( p ) {
 				clearTimeout( timeoutId );
 				Propagate( p, promise );
 			});
@@ -716,7 +721,7 @@
 
 				} else {
 					++waiting;
-					OnSettledAt( p, i, onSettled );
+					OnSettled( p, i, onSettled );
 				}
 			}
 		}
@@ -764,7 +769,7 @@
 
 				} else {
 					++waiting;
-					OnSettledAt( p, i, onSettled );
+					OnSettled( p, i, onSettled );
 				}
 			}
 		}
