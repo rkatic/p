@@ -354,7 +354,7 @@
 	function P( x ) {
 		return x instanceof Promise ?
 			x :
-			Resolve( new Promise(), x, false );
+			Resolve( new Promise(), x );
 	}
 
 	P.longStackSupport = false;
@@ -410,7 +410,7 @@
 		}
 	}
 
-	function Resolve( p, x, sync ) {
+	function Resolve( p, x ) {
 		if ( p._state ) {
 			return p;
 		}
@@ -429,39 +429,36 @@
 		} else if ( x !== Object(x) ) {
 			Fulfill( p, x );
 
-		} else if ( sync ) {
-			Assimilate( p, x );
-
 		} else {
-			queueTask( Assimilate, p, x );
+			var then = GetThen( p, x );
+
+			if ( typeof then === "function" ) {
+				TryResolver( resolverFor(p), then, x );
+
+			} else {
+				Fulfill( p, x );
+			}
 		}
 
 		return p;
 	}
 
-	function Assimilate( p, x ) {
-		var r, then;
-
+	function GetThen( p, x ) {
 		try {
-			then = x.then;
+			return x.then;
 
-		} catch ( e1 ) {
-			Reject( p, e1 );
-			return;
+		} catch ( e ) {
+			Reject( p, e );
+			return null;
 		}
+	}
 
-		if ( typeof then === "function" ) {
-			r = resolverFor( p );
+	function TryResolver( d, resolver, x ) {
+		try {
+			call.call( resolver, x, d.resolve, d.reject );
 
-			try {
-				call.call( then, x, r.resolve, r.reject );
-
-			} catch ( e2 ) {
-				r.reject( e2 );
-			}
-
-		} else {
-			Fulfill( p, x );
+		} catch ( e ) {
+			d.reject( e );
 		}
 	}
 
@@ -541,7 +538,7 @@
 			return;
 		}
 
-		Resolve( p, x, true );
+		Resolve( p, x );
 	}
 
 	function resolverFor( promise ) {
@@ -553,7 +550,7 @@
 			resolve: function( y ) {
 				if ( !done ) {
 					done = true;
-					Resolve( promise, y, false );
+					Resolve( promise, y );
 				}
 			},
 
