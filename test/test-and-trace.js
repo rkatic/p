@@ -28,12 +28,26 @@ var silent = process.argv.slice(-1)[0] === '-';
 
 buildTracable("./p.js", "./test/p.js");
 
-runOwnTest(silent ? null : logStatuses);
+runOwnTest(reportOptStats);
 
-function logStatuses() {
-	TRACE_FUNCTIONS.records.forEach(function( r ) {
-		console.log( r.name + ' : ' + getOptStatus(r.fn) + ' : ' + %GetOptimizationCount(r.fn) );
-	});
+function reportOptStats() {
+	var report = TRACE_FUNCTIONS.records.map(function( r ) {
+		return [ r.name, getOptStatus(r.fn), %GetOptimizationCount(r.fn) ].join(' : ');
+	}).join('\n');
+
+	if ( !silent ) {
+		console.log( report );
+	}
+
+	var d = new Date();
+
+	report = "--- AUTO GENERATED CONTENT --- " +
+		"(" +
+			[ d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() ].join("/") +
+			" " + [ d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds() ].join(":") +
+		")\n" + report;
+
+	fs.writeFileSync( "./test/opt-stats.txt", report );
 }
 
 function runOwnTest(cb) {
@@ -70,12 +84,6 @@ function getOptStatus(fn) {
 		case 6: return "maybe deoptimized";
 	}
 }
-
-//"--- AUTO GENERATED CONTENT ---" +
-//"(" +
-//	[d.getUTCFullYear(), d.getUTCMonth, d.getUTCDate()].join("/") +
-//	" " + [d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()].join(":") +
-//")\n" +
 
 // node --trace_opt --trace_deopt --allow-natives-syntax test/test-and-trace.js - > out.txt
 
