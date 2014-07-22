@@ -1,10 +1,24 @@
 (function(){
 "use strict";
 
+var opt_tracing = typeof TRACE_FUNCTIONS !== "undefined";
+
 if ( typeof P === "undefined" ) {
-	global.P = require("../p");
+	global.P = require(opt_tracing ? "./p" : "../p");
 	global.expect = require("expect.js");
-	require("mocha");
+	//require("mocha");
+}
+
+if ( opt_tracing ) {
+	TRACE_FUNCTIONS.stopAdding();
+
+	beforeEach(function() {
+		TRACE_FUNCTIONS.optimize();
+	});
+
+	afterEach(function() {
+		TRACE_FUNCTIONS.optimize();
+	});
 }
 
 var isNodeJS = typeof process === "object" && process &&
@@ -15,10 +29,59 @@ function fail() {
 	expect(true).to.be(false);
 }
 
+function thenableSyncFulfillment( value ) {
+	return {
+		then: function( cb, eb ) {
+			cb( value );
+		}
+	};
+}
+
+function thenableSyncRejection( reason ) {
+	return {
+		then: function( cb, eb ) {
+			eb( reason );
+		}
+	};
+}
+
+function thenableFulfillment( value ) {
+	return {
+		then: function( cb, eb ) {
+			setTimeout(function() {
+				cb( value );
+			}, 0)
+		}
+	};
+}
+
+function thenableRejection( reason ) {
+	return {
+		then: function( cb, eb ) {
+			setTimeout(function() {
+				eb( reason );
+			}, 0)
+		}
+	};
+}
 
 var VALUES = ["", true, false, 0, 1, 2, -1, -2, {}, [], {x: 1}, [1,2,3], null, void 0, new Error()];
 VALUES[ VALUES.length + 1 ] = "sparse";
 VALUES.length++;
+
+var FULLFILMENTS = VALUES.concat(
+	VALUES.map( P ),
+	VALUES.map( thenableFulfillment ),
+	VALUES.map( thenableSyncFulfillment )
+);
+
+var REJECTIONS = [].concat(
+	VALUES.map( P.reject ),
+	VALUES.map( thenableRejection ),
+	VALUES.map( thenableSyncRejection )
+);
+
+var FULLFILMENTS_AND_REJECTIONS = FULLFILMENTS.concat( REJECTIONS );
 
 function map( array, f ) {
 	var array2 = new Array(array.length|0);
@@ -37,7 +100,7 @@ function allValues( func ) {
 describe("P function", function() {
 
 	it("should return a promise", function() {
-		map(VALUES, function( value ) {
+		map(FULLFILMENTS_AND_REJECTIONS, function( value ) {
 			expect( P(value).constructor.name ).to.be("Promise");
 		});
 	});

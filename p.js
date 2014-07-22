@@ -359,6 +359,13 @@
 
 	P.longStackSupport = false;
 
+	function HandleSettled( p ) {
+		if ( p._pending ) {
+			HandlePending( p, p._op, p._pending );
+			p._pending = null;
+		}
+	}
+
 	function Fulfill( p, value ) {
 		if ( p._state ) {
 			return;
@@ -367,10 +374,7 @@
 		p._state = FULFILLED;
 		p._value = value;
 
-		if ( p._pending ) {
-			HandlePending( p, p._op, p._pending );
-			p._pending = null;
-		}
+		HandleSettled( p );
 	}
 
 	function Reject( p, reason ) {
@@ -389,10 +393,7 @@
 			p._domain = process.domain;
 		}
 
-		if ( p._pending ) {
-			HandlePending( p, p._op, p._pending );
-			p._pending = null;
-		}
+		HandleSettled( p );
 	}
 
 	function Propagate( parent, p ) {
@@ -404,10 +405,7 @@
 		p._value = parent._value;
 		p._domain = parent._domain;
 
-		if ( p._pending ) {
-			HandlePending( p, p._op, p._pending );
-			p._pending = null;
-		}
+		HandleSettled( p );
 	}
 
 	function Resolve( p, x ) {
@@ -416,31 +414,39 @@
 		}
 
 		if ( x instanceof Promise ) {
-			if ( x === p ) {
-				Reject( p, new TypeError("You can't resolve a promise with itself") );
-
-			} else if ( x._state ) {
-				Propagate( x, p );
-
-			} else {
-				OnSettled( x, OP_PROPAGATE, p );
-			}
+			ResolveWithPromise( p, x );
 
 		} else if ( x !== Object(x) ) {
 			Fulfill( p, x );
 
 		} else {
-			var then = GetThen( p, x );
-
-			if ( typeof then === "function" ) {
-				TryResolver( resolverFor(p), then, x );
-
-			} else {
-				Fulfill( p, x );
-			}
+			ResolveWithObject( p, x )
 		}
 
 		return p;
+	}
+
+	function ResolveWithPromise( p, x ) {
+		if ( x === p ) {
+			Reject( p, new TypeError("You can't resolve a promise with itself") );
+
+		} else if ( x._state ) {
+			Propagate( x, p );
+
+		} else {
+			OnSettled( x, OP_PROPAGATE, p );
+		}
+	}
+
+	function ResolveWithObject( p, x ) {
+		var then = GetThen( p, x );
+
+		if ( typeof then === "function" ) {
+			TryResolver( resolverFor(p), then, x );
+
+		} else {
+			Fulfill( p, x );
+		}
 	}
 
 	function GetThen( p, x ) {
@@ -463,35 +469,30 @@
 	}
 
 	function HandlePending( p, op, pending ) {
-		switch ( op ) {
-			case OP_CALL:
-				pending( p );
-				break;
+		if ( op === OP_CALL ) {
+			pending( p );
 
-			case OP_THEN:
-				queueTask_(
-					Then, p, pending,
-					p._domain || pending._domain,
-					pending._trace
-				);
-				break;
+		} else if ( op === OP_THEN ) {
+			queueTask_(
+				Then, p, pending,
+				p._domain || pending._domain,
+				pending._trace
+			);
 
-			case OP_PROPAGATE:
-				queueTask_(
-					Propagate, p, pending,
-					null,
-					null
-				);
-				break;
+		} else if ( op === OP_PROPAGATE ) {
+			queueTask_(
+				Propagate, p, pending,
+				null,
+				null
+			);
 
-			case OP_MULTIPLE:
-				for ( var i = 0, l = pending.length; i < l; i += 2 ) {
-					HandlePending( p, pending[i], pending[i + 1] );
-				}
-				break;
+		} else if ( op === OP_MULTIPLE ) {
+			for ( var i = 0, l = pending.length; i < l; i += 2 ) {
+				HandlePending( p, pending[i], pending[i + 1] );
+			}
 
-			default:
-				pending( p, op );
+		} else {
+			pending( p, op );
 		}
 	}
 

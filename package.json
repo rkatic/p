@@ -13,10 +13,12 @@
   },
   "main": "p.js",
   "scripts": {
-    "posttest": "uglifyjs p.js -o p.min.js -m",
-    "test-own": "mocha -R spec -s 100 test/test.js",
-    "test-aplus": "promises-aplus-tests test/adapter",
-    "test": "promises-aplus-tests test/adapter --reporter dot && mocha -s 200 test/test.js"
+    "minify": "uglifyjs p.js -o p.min.js -m",
+    "test-own": "mocha --reporter dot -s 200 test/test.js",
+    "test-own-trace": "node -allow-natives-syntax test/test-and-trace.js",
+    "test-aplus": "promises-aplus-tests test/adapter --reporter dot",
+    "test": "npm run test-aplus && npm run test-own",
+    "test-local": "npm run test-aplus && npm run test-own-trace && npm run minify"
   },
   "keywords": [
     "promise",
