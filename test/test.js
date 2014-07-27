@@ -207,13 +207,13 @@ describe("allSettled", function() {
 
 		return promise.then(function( settled ) {
 			for ( var i = 0; i < settled.length; ++i ) {
+				var expectedValue = VALUES[ i % VALUES.length ];
+
 				if ( i < FULLFILMENTS.length ) {
-					expect( settled[i].state ).to.be("fulfilled");
-					expect( settled[i].value ).to.be( VALUES[ i % VALUES.length ] );
+					expect( settled[i] ).to.be.eql( {state: "fulfilled", value: expectedValue} );
 
 				} else {
-					expect( settled[i].state ).to.be("rejected");
-					expect( settled[i].reason ).to.be( VALUES[ i % VALUES.length ] );
+					expect( settled[i] ).to.be.eql( {state: "rejected", reason: expectedValue} );
 				}
 			}
 		});
