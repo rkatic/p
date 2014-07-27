@@ -185,7 +185,7 @@
 		currentTrace = null;
 	}
 
-	function queueTask( a, b ) {
+	function scheduleThen( a, b ) {
 		var node = tail.next;
 
 		if ( node === head ) {
@@ -416,7 +416,7 @@
 			pending( p );
 
 		} else if ( op === OP_THEN ) {
-			queueTask( p, pending );
+			scheduleThen( p, pending );
 
 		} else if ( op === OP_MULTIPLE ) {
 			for ( var i = 0, l = pending.length; i < l; i += 2 ) {
@@ -552,7 +552,7 @@
 		}
 
 		if ( this._state ) {
-			queueTask( this, promise );
+			scheduleThen( this, promise );
 
 		} else {
 			OnSettled( this, OP_THEN, promise );

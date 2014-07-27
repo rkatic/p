@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/6/27 3:52:38)
+--- AUTO GENERATED CONTENT --- (2014/6/27 4:22:26)
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
 captureLine : not optimized : 0
@@ -10,7 +10,7 @@ TaskNode : optimized : 1
 ot : not optimized : 0
 throwFirstError : not optimized : 0
 flush : not optimized : 3
-queueTask : optimized : 1
+scheduleThen : optimized : 1
 requestFlushForNodeJS : not optimized : 2
 makeRequestCallFromMutationObserver : not optimized : 0
 makeRequestCallFromTimer : not optimized : 0
