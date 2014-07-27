@@ -656,8 +656,8 @@
 			return promise;
 		}
 
-		var waiting = 0;
 		var output = new Array( len );
+		var waiting = len;
 
 		function onSettled( p, i ) {
 			output[ i ] = p.inspect();
@@ -667,16 +667,7 @@
 		}
 
 		for ( var i = 0; i < len; ++i ) {
-			if ( i in input ) {
-				var p = P( input[i] );
-				if ( p._state ) {
-					output[ i ] = p.inspect();
-
-				} else {
-					++waiting;
-					OnSettled( p, i, onSettled );
-				}
-			}
+			OnSettled( P(input[i]), i, onSettled );
 		}
 
 		if ( waiting === 0 ) {
@@ -696,35 +687,27 @@
 			return promise;
 		}
 
-		var waiting = 0;
 		var output = new Array( len );
+		var waiting = len;
+		var rejected = false;
 
 		function onSettled( p, i ) {
-			if ( p._state === REJECTED ) {
-				Propagate( p, promise );
-				return;
-			}
-			output[ i ] = p._value;
-			if ( --waiting === 0 ) {
-				Fulfill( promise, output );
+			if ( output !== null ) {
+				if ( p._state === REJECTED ) {
+					output = null;
+					Propagate( p, promise );
+
+				} else {
+					output[ i ] = p._value;
+					if ( --waiting === 0 ) {
+						Fulfill( promise, output );
+					}
+				}
 			}
 		}
 
 		for ( var i = 0; i < len; ++i ) {
-			if ( i in input ) {
-				var p = P( input[i] );
-				if ( p._state === FULFILLED ) {
-					output[ i ] = p._value;
-
-				} else if ( p._state === REJECTED ) {
-					Propagate( p, promise );
-					break;
-
-				} else {
-					++waiting;
-					OnSettled( p, i, onSettled );
-				}
-			}
+			OnSettled( P(input[i]), i, onSettled );
 		}
 
 		if ( waiting === 0 ) {

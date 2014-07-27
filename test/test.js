@@ -66,8 +66,6 @@ function thenableRejection( reason ) {
 }
 
 var VALUES = ["", true, false, 0, 1, 2, -1, -2, {}, [], {x: 1}, [1,2,3], null, void 0, new Error()];
-VALUES[ VALUES.length + 1 ] = "sparse";
-VALUES.length++;
 
 var FULLFILMENTS = VALUES.concat(
 	VALUES.map( P ),
@@ -160,7 +158,7 @@ describe("all", function() {
 		return P.all([]);
 	});
 
-	it("resolves when passed an sparse array", function() {
+	it("resolves when passed an array", function() {
 		var toResolve = P.defer();
 		var array = VALUES.concat( toResolve.promise );
 		var array2 = array.slice();
@@ -178,7 +176,7 @@ describe("all", function() {
 		var toReject = P.defer();
 		var theReason = new Error();
 		toReject.reject( theReason );
-		var array = VALUES.concat( toReject.promise )
+		var array = FULLFILMENTS.concat( toReject.promise )
 
 		return P.all( array )
 		.then( fail, function( reason ) {
@@ -186,13 +184,38 @@ describe("all", function() {
 		})
 		.then(function() {
 			var toRejectLater = P.defer();
-			var array = VALUES.concat( toRejectLater.promise );
+			var array = FULLFILMENTS.concat( toRejectLater.promise );
 			var promise = P.all( array );
 			toRejectLater.reject( theReason );
 			return promise;
 		})
 		.then( fail, function( reason ) {
 			expect( reason ).to.be( theReason );
+		});
+	});
+});
+
+describe("allSettled", function() {
+
+	it("resolves when passed an empty array", function() {
+		return P.allSettled([]);
+	});
+
+	it("resolves when passed an array", function() {
+		var array = FULLFILMENTS_AND_REJECTIONS;
+		var promise = P.allSettled( array );
+
+		return promise.then(function( settled ) {
+			for ( var i = 0; i < settled.length; ++i ) {
+				if ( i < FULLFILMENTS.length ) {
+					expect( settled[i].state ).to.be("fulfilled");
+					expect( settled[i].value ).to.be( VALUES[ i % VALUES.length ] );
+
+				} else {
+					expect( settled[i].state ).to.be("rejected");
+					expect( settled[i].reason ).to.be( VALUES[ i % VALUES.length ] );
+				}
+			}
 		});
 	});
 });
