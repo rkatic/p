@@ -148,11 +148,8 @@
 	tail.next = head;
 
 	function TaskNode() {
-		this.task = null;
 		this.a = null;
 		this.b = null;
-		this.domain = null;
-		this.trace = null;
 		this.next = null;
 	}
 
@@ -176,58 +173,23 @@
 				++nFreeTaskNodes;
 			}
 
-			currentTrace = h.trace;
-
-			if ( h.domain ) {
-				runInDomain( h.domain, h.task, h.a, h.b );
-				h.domain = null;
-
-			} else {
-				(1,h.task)( h.a, h.b );
-			}
-
-			h.task = null;
+			var a = h.a;
+			var b = h.b;
 			h.a = null;
 			h.b = null;
-			h.trace = null;
+
+			Then( a, b );
 		}
 
 		flushing = false;
 		currentTrace = null;
 	}
 
-	function beforeThrow() {
-		head.task = null;
-		head.a = null;
-		head.b = null;
-		head.domain = null;
-		head.trace = null;
-		requestFlush();
-	}
-
-	function runInDomain( domain, task, a, b ) {
-		if ( domain._disposed ) {
-			return;
-		}
-		domain.enter();
-		task( a, b );
-		domain.exit();
-	}
-
-	function queueTask( task, a, b ) {
-		queueTask_(
-			task, a, b,
-			isNodeJS ? process.domain : null,
-			P.longStackSupport ? getTrace() : null
-		);
-	}
-
-	function queueTask_( task, a, b, domain, trace ) {
+	function queueTask( a, b ) {
 		var node = tail.next;
 
 		if ( node === head ) {
-			node = new TaskNode();
-			tail.next = node;
+			tail.next = node = new TaskNode();
 			node.next = head;
 		} else {
 			--nFreeTaskNodes;
@@ -235,11 +197,8 @@
 
 		tail = node;
 
-		node.task = task;
 		node.a = a;
 		node.b = b;
-		node.domain = domain;
-		node.trace = trace;
 
 		if ( !flushing ) {
 			flushing = true;
@@ -294,7 +253,7 @@
 
 	if ( isNodeJS ) {
 		handleError = function( e ) {
-			beforeThrow();
+			requestFlush();
 			throw e;
 		};
 
@@ -305,18 +264,10 @@
 		}
 	}
 
-	function tryCall( toCall, onError ) {
-		try {
-			toCall.call();
-
-		} catch ( e ) {
-			onError( e );
-		}
-	}
-
-
 	function asap( task ) {
-		queueTask( tryCall, task, handleError );
+		P().done(function() {
+			task.call();
+		});
 	}
 
 	//__________________________________________________________________________
@@ -328,26 +279,14 @@
 
 	var OP_CALL = -1;
 	var OP_THEN = -2;
-	var OP_PROPAGATE = -3;
-	var OP_MULTIPLE = -4;
+	var OP_MULTIPLE = -3;
 
-	function ReportIfRejected( p ) {
-		if ( p._state === REJECTED ) {
-			queueTask_( reportError, p._value, handleError, p._domain, null );
-		}
-	}
-
-	function reportError( error, onError ) {
+	function DoneEb( e ) {
 		if ( P.onerror ) {
-			try {
-				(1,P.onerror)( error );
-
-			} catch ( e ) {
-				onError( e );
-			}
+			(1,P.onerror)( e );
 
 		} else {
-			onError( error );
+			throw e;
 		}
 	}
 
@@ -416,11 +355,15 @@
 		if ( x instanceof Promise ) {
 			ResolveWithPromise( p, x );
 
-		} else if ( x !== Object(x) ) {
-			Fulfill( p, x );
-
 		} else {
-			ResolveWithObject( p, x )
+			var type = typeof x;
+
+			if ( type === "object" && x !== null || type === "function" ) {
+				ResolveWithObject( p, x )
+
+			} else {
+				Fulfill( p, x );
+			}
 		}
 
 		return p;
@@ -434,7 +377,7 @@
 			Propagate( x, p );
 
 		} else {
-			OnSettled( x, OP_PROPAGATE, p );
+			OnSettled( x, OP_THEN, p );
 		}
 	}
 
@@ -473,18 +416,7 @@
 			pending( p );
 
 		} else if ( op === OP_THEN ) {
-			queueTask_(
-				Then, p, pending,
-				p._domain || pending._domain,
-				pending._trace
-			);
-
-		} else if ( op === OP_PROPAGATE ) {
-			queueTask_(
-				Propagate, p, pending,
-				null,
-				null
-			);
+			queueTask( p, pending );
 
 		} else if ( op === OP_MULTIPLE ) {
 			for ( var i = 0, l = pending.length; i < l; i += 2 ) {
@@ -514,7 +446,12 @@
 	}
 
 	function Then( parent, p ) {
+		var domain = parent._domain || p._domain;
+
+		currentTrace = p._trace;
+
 		var cb = parent._state === FULFILLED ? p._cb : p._eb;
+
 		p._cb = null;
 		p._eb = null;
 		p._domain = null;
@@ -522,6 +459,13 @@
 
 		if ( cb === null ) {
 			Propagate( parent, p );
+
+		} else if ( domain ) {
+			if ( !domain._disposed ) {
+				domain.enter();
+				HandleCallback( p, cb, parent._value );
+				domain.exit();
+			}
 
 		} else {
 			HandleCallback( p, cb, parent._value );
@@ -535,7 +479,13 @@
 			x = cb( value );
 
 		} catch ( e ) {
-			Reject( p, e );
+			if ( cb === DoneEb ) {
+				handleError( e );
+
+			} else {
+				Reject( p, e );
+			}
+
 			return;
 		}
 
@@ -601,7 +551,12 @@
 			promise._domain = process.domain;
 		}
 
-		OnSettled( this, OP_THEN, promise );
+		if ( this._state ) {
+			queueTask( this, promise );
+
+		} else {
+			OnSettled( this, OP_THEN, promise );
+		}
 
 		return promise;
 	};
@@ -613,7 +568,7 @@
 			p = p.then( cb, eb );
 		}
 
-		OnSettled( p, OP_CALL, ReportIfRejected );
+		p.then( null, DoneEb );
 	};
 
 	Promise.prototype.fail = function( eb ) {

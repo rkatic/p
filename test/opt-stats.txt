@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/6/22 18:33:2)
+--- AUTO GENERATED CONTENT --- (2014/6/27 3:52:38)
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
 captureLine : not optimized : 0
@@ -9,18 +9,13 @@ makeStackTraceLong : not optimized : 0
 TaskNode : optimized : 1
 ot : not optimized : 0
 throwFirstError : not optimized : 0
-flush : not optimized : 5
-beforeThrow : optimized : 1
-runInDomain : not optimized : 0
-queueTask : not optimized : 0
-queueTask_ : optimized : 1
+flush : not optimized : 3
+queueTask : optimized : 1
 requestFlushForNodeJS : not optimized : 2
 makeRequestCallFromMutationObserver : not optimized : 0
 makeRequestCallFromTimer : not optimized : 0
-tryCall : not optimized : 0
 asap : not optimized : 0
-ReportIfRejected : optimized : 1
-reportError : not optimized : 0
+DoneEb : optimized : 2
 P : optimized : 1
 HandleSettled : optimized : 3
 Fulfill : optimized : 1
@@ -33,7 +28,7 @@ GetThen : not optimized : 0
 TryResolver : not optimized : 0
 HandlePending : optimized : 1
 OnSettled : optimized : 1
-Then : optimized : 1
+Then : optimized : 2
 HandleCallback : not optimized : 0
 resolverFor : optimized : 1
 defer : optimized : 1

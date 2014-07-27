@@ -87,4 +87,4 @@ function getOptStatus(fn) {
 
 // node --trace_opt --trace_deopt --allow-natives-syntax test/test-and-trace.js - > out.txt
 
-// node --trace-hydrogen --code-comments --trace-deopt --allow-natives-syntax test/test-and-trace.js - > out.txt
+// node --trace-hydrogen --code-comments --trace_opt --trace-deopt --allow-natives-syntax test/test-and-trace.js - > out.txt
