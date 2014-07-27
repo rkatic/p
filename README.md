@@ -15,7 +15,7 @@ A simple Promises/A+ library.
 - Supports domains (Note: domains in Node.js v0.8 are broken).
 - Small.
 - Simple.
-- [Fast](http://jsperf.com/davy-jones-benchmark/29).
+- [Fast](http://jsperf.com/davy-jones-benchmark/32).
 
 ##API
 
