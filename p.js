@@ -47,9 +47,9 @@
 
 	function getFileNameAndLineNumber( stackLine ) {
 		var m =
-			/at .+ \(([\s\S]+):(\d+):(?:\d+)\)$/.exec( stackLine ) ||
+			/at .+ \((.+):(\d+):(?:\d+)\)$/.exec( stackLine ) ||
 			/at ([^ ]+):(\d+):(?:\d+)$/.exec( stackLine ) ||
-			/@([\s\S]+):(\d+):(?:\d+)$/.exec( stackLine );
+			/@(.+):(\d+):(?:\d+)$/.exec( stackLine );
 
 		return m ? { fileName: m[1], lineNumber: Number(m[2]) } : null;
 	}
