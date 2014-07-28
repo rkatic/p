@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/6/27 5:48:11)
+--- AUTO GENERATED CONTENT --- (2014/6/28 6:19:40)
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
 captureLine : not optimized : 0
@@ -14,8 +14,8 @@ scheduleThen : optimized : 1
 requestFlushForNodeJS : not optimized : 2
 makeRequestCallFromMutationObserver : not optimized : 0
 makeRequestCallFromTimer : not optimized : 0
-asap : not optimized : 0
 DoneEb : optimized : 2
+ReportIfRejected : optimized : 2
 P : optimized : 1
 HandleSettled : optimized : 3
 Fulfill : optimized : 1
@@ -48,3 +48,4 @@ allSettled : optimized : 1
 all : optimized : 2
 spread : not optimized : 0
 promised : not optimized : 0
+callValue : not optimized : 0

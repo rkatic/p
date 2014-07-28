@@ -264,12 +264,6 @@
 		}
 	}
 
-	function asap( task ) {
-		P().done(function() {
-			task.call();
-		});
-	}
-
 	//__________________________________________________________________________
 
 
@@ -287,6 +281,16 @@
 
 		} else {
 			throw e;
+		}
+	}
+
+	function ReportIfRejected( p ) {
+		if ( p._state === REJECTED ) {
+			if ( p._domain ) {
+				p._domain.enter();
+			}
+
+			handleError( p._value );
 		}
 	}
 
@@ -479,13 +483,7 @@
 			x = cb( value );
 
 		} catch ( e ) {
-			if ( cb === DoneEb ) {
-				handleError( e );
-
-			} else {
-				Reject( p, e );
-			}
-
+			Reject( p, e );
 			return;
 		}
 
@@ -568,7 +566,9 @@
 			p = p.then( cb, eb );
 		}
 
-		p.then( null, DoneEb );
+		p = p.then( null, DoneEb );
+
+		OnSettled( p, OP_CALL, ReportIfRejected );
 	};
 
 	Promise.prototype.fail = function( eb ) {
@@ -743,7 +743,16 @@
 
 	P.onerror = null;
 
-	P.nextTick = asap;
+	P.nextTick = function nextTick( task ) {
+		var p = new Promise();
+		Fulfill( p, task );
+		p = p.then( callValue );
+		OnSettled( p, OP_CALL, ReportIfRejected );
+	};
+
+	function callValue( value ) {
+		value.call();
+	}
 
 	var pEndingLine = captureLine();
 
