@@ -689,7 +689,6 @@
 
 		var output = new Array( len );
 		var waiting = len;
-		var rejected = false;
 
 		function onSettled( p, i ) {
 			if ( output !== null ) {
