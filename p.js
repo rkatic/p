@@ -740,6 +740,33 @@
 		};
 	}
 
+	P.denodeify = denodeify;
+	function denodeify( f ) {
+		return function() {
+			var len = arguments.length;
+			var args = new Array( len + 1 );
+			for ( var i = 0; i < len; ++i ) {
+				args[i] = arguments[i];
+			}
+			args[i] = resolver;
+
+			function resolver( error, value ) {
+				if ( error ) {
+					d.reject( error );
+
+				} else {
+					d.resolve( value );
+				}
+			}
+
+			var d = defer();
+
+			apply.call( f, this, args );
+
+			return d.promise;
+		};
+	}
+
 	P.onerror = null;
 
 	P.nextTick = function nextTick( task ) {

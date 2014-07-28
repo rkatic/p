@@ -42,3 +42,4 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `promise.inspect()`
 - `promise.promised(aFunction)` :new:
 - `promise.nodeify(nodeback)` :new:
+- `promise.denodeify(aFunction)` :new:

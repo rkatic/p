@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/6/28 6:45:57)
+--- AUTO GENERATED CONTENT --- (2014/6/28 7:3:54)
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
 captureLine : not optimized : 0
@@ -48,4 +48,5 @@ allSettled : optimized : 1
 all : optimized : 2
 spread : not optimized : 0
 promised : not optimized : 0
+denodeify : optimized : 1
 callValue : not optimized : 0

@@ -422,6 +422,38 @@ describe("promised", function() {
 
 });
 
+describe("denodeify", function() {
+
+	var fullfillment = P.denodeify(function( a, b, c, d, callback ) {
+		callback( a + b + c + d );
+	});
+
+
+
+	it("should fulfill if no error", function() {
+		var f = P.denodeify(function( a, b, c, d, callback ) {
+			callback( null, a + b + c + d );
+		});
+
+		return f( 1, 2, 3, 4 ).then(function( value ) {
+			expect( value ).to.be( 10 );
+		});
+	});
+
+	it("should reject on error", function() {
+		var theError = new Error();
+
+		var f = P.denodeify(function( a, b, c, d, callback ) {
+			callback( theError );
+		});
+
+		return f( 1, 2, 3, 4 ).then(fail, function( reason ) {
+			expect( reason ).to.be( theError );
+		});
+	});
+
+});
+
 if ( isNodeJS && !/v0\.8\./.test(process.version) ) describe("domain", function() {
 
 	var domain = require("domain");
