@@ -1,0 +1,30 @@
+{
+  "name": "p-promise",
+  "main": "p.js",
+  "version": "0.4.1",
+  "homepage": "https://github.com/rkatic/p",
+  "authors": [
+    "Robert Katic <robert.katic@gmail.com>"
+  ],
+  "description": "A simple Promises/A+ library.",
+  "moduleType": [
+    "amd",
+    "globals",
+    "node"
+  ],
+  "keywords": [
+    "promise",
+    "promises",
+    "promises-aplus",
+    "browser",
+    "node"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
