@@ -750,20 +750,25 @@
 			}
 			args[i] = resolver;
 
-			function resolver( error, value ) {
-				if ( error ) {
-					d.reject( error );
+			var promise = new Promise();
+			var done = false;
 
-				} else {
-					d.resolve( value );
+			function resolver( error, value ) {
+				if ( !done ) {
+					done = true;
+
+					if ( error ) {
+						Reject( promise, error );
+
+					} else {
+						Resolve( promise, value );
+					}
 				}
 			}
 
-			var d = defer();
-
 			apply.call( f, this, args );
 
-			return d.promise;
+			return promise;
 		};
 	}
 
