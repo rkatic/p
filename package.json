@@ -1,6 +1,6 @@
 {
   "name": "p-promise",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "A simple Promises/A+ library.",
   "author": "Robert Katić <robert.katic@gmail.com> (https://github.com/rkatic)",
   "license": "MIT",
