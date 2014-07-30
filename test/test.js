@@ -540,6 +540,17 @@ describe("denodeify", function() {
 		});
 	});
 
+	it("should make trace long on timeouted promise", function _it_() {
+		return P().then(function _2_() {
+			return P().then(function _1_() {
+				return P.defer().promise.timeout(1);
+			});
+		})
+		.then(fail, function( error ) {
+			checkError(error, " 1 2 ");
+		});
+	});
+
 });
 
 if ( isNodeJS && !/v0\.8\./.test(process.version) ) describe("domain", function() {
