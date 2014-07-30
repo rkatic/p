@@ -492,6 +492,7 @@
 
 	function resolverFor( promise ) {
 		var done = false;
+		var trace = P.longStackSupport ? getTrace() : null;
 
 		return {
 			promise: promise,
@@ -499,6 +500,9 @@
 			resolve: function( y ) {
 				if ( !done ) {
 					done = true;
+					if ( trace && !currentTrace ) {
+						currentTrace = trace;
+					}
 					Resolve( promise, y );
 				}
 			},
@@ -506,6 +510,9 @@
 			reject: function( reason ) {
 				if ( !done ) {
 					done = true;
+					if ( trace && !currentTrace ) {
+						currentTrace = trace;
+					}
 					Reject( promise, reason );
 				}
 			}
@@ -752,10 +759,15 @@
 
 			var promise = new Promise();
 			var done = false;
+			var trace = P.longStackSupport ? getTrace() : null;
 
 			function resolver( error, value ) {
 				if ( !done ) {
 					done = true;
+
+					if ( trace && !currentTrace ) {
+						currentTrace = trace;
+					}
 
 					if ( error ) {
 						Reject( promise, error );

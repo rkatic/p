@@ -454,6 +454,94 @@ describe("denodeify", function() {
 
 });
 
+!opt_tracing && describe("longStackSupport", function() {
+
+	Error.stackTraceLimit = Infinity;
+
+	beforeEach(function() {
+		P.longStackSupport = true;
+	});
+
+	afterEach(function() {
+		P.longStackSupport = false;
+	});
+
+	var hasStacks = !!( new Error().stack );
+
+	function checkError( error, expectedNamesStr ) {
+		expect( error instanceof Error ).to.be( true );
+
+		if ( hasStacks ) {
+			var stacks = error.stack
+				.split("_it_")[0]
+				.split("\nFrom previous event:\n");
+
+			var str = map(stacks, function( stack ) {
+				var m = stack.match(/_(\w+)_/g);
+				return m ? m.join("").split("__").join("-").slice(1, -1) : "";
+			}).join(" ").replace(/\s+/g, " ");
+
+			expect( str ).to.be( expectedNamesStr );
+		}
+	}
+
+	it("should make trace long on sync rejected thenable", function _it_() {
+		return P().then(function _5_() {
+			return P().then(function _4_() {
+				return P().then(function _3_() {
+					return {then: function _2_( cb, eb ) {
+					  cb({then: function _1_( cb, eb ) {
+						eb( new Error() );
+					  }});
+					}};
+				});
+			})
+		})
+		.then(fail, function( error ) {
+			checkError(error, "1-2 4 5 ");
+		});
+	});
+
+	it("should make trace long on async rejected thenable", function _it_() {
+		return P().then(function _5_() {
+			return P().then(function _4_() {
+				return P().then(function _3_() {
+					return {then: function _2_( cb, eb ) {
+						setTimeout(function() {
+							cb({then: function _1_( cb, eb ) {
+								  eb( new Error() );
+							}});
+						}, 0);
+					}};
+				});
+			})
+		})
+		.then(fail, function( error ) {
+			checkError(error, "1 4 5 ");
+		});
+	});
+
+
+	it("should make trace long if denodeifed function rejects", function _it_() {
+
+		var rejection = P.denodeify(function( nodeback ) {
+			setTimeout(function _0_() {
+				nodeback( new Error() );
+			}, 0);
+		});
+
+		return P().then(function _2_() {
+			return P().then(function _1_() {
+				return rejection();
+			});
+		})
+		.then(fail, function( error ) {
+			checkError(error, "0 1 2 ");
+		});
+	});
+
+});
+
 if ( isNodeJS && !/v0\.8\./.test(process.version) ) describe("domain", function() {
 
 	var domain = require("domain");
