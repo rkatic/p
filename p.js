@@ -611,17 +611,20 @@
 	};
 
 	Promise.prototype.delay = function( ms ) {
-		var d = defer();
+		var promise = new Promise();
 
-		this.then(function( value ) {
-			var trace = currentTrace;
-			setTimeout(function() {
-				currentTrace = trace;
-				d.resolve( value );
-			}, ms);
-		}, d.reject);
+		OnSettled(this, OP_CALL, function( p ) {
+			if ( p._state === FULFILLED ) {
+				setTimeout(function() {
+					Propagate( p, promise );
+				}, ms);
 
-		return d.promise;
+			} else {
+				Propagate( p, promise );
+			}
+		});
+
+		return promise;
 	};
 
 	Promise.prototype.all = function() {
