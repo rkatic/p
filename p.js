@@ -253,6 +253,7 @@
 
 	if ( isNodeJS ) {
 		handleError = function( e ) {
+			currentTrace = null;
 			requestFlush();
 			throw e;
 		};
