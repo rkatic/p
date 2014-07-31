@@ -512,17 +512,28 @@ describe("denodeify", function() {
 			return P().then(function _4_() {
 				return P().then(function _3_() {
 					return {then: function _2_( cb, eb ) {
-						setTimeout(function() {
+						setTimeout(function _b_() {
 							cb({then: function _1_( cb, eb ) {
-								  eb( new Error() );
+								cb({then: function( cb, eb ) {
+									setTimeout(function _a_() {
+										eb( new Error() );
+									});
+								}});
 							}});
+
+							P().then(function _c_() {
+								throw new Error();
+							})
+							.done(null, function( error ) {
+								checkError(error, "c b");
+							});
 						}, 0);
 					}};
 				});
 			})
 		})
 		.then(fail, function( error ) {
-			checkError(error, "1 4 5");
+			checkError(error, "a 1-b 4 5");
 		});
 	});
 

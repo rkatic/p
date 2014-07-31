@@ -491,31 +491,49 @@
 		Resolve( p, x );
 	}
 
-	function resolverFor( promise ) {
+	function dualResolverFor( promise, nodelike ) {
 		var done = false;
 		var trace = P.longStackSupport ? getTrace() : null;
+
+		return function( error, y ) {
+			if ( !done ) {
+				done = true;
+
+				if ( trace ) {
+					if ( currentTrace ) {
+						trace = null;
+
+					} else {
+						currentTrace = trace;
+					}
+				}
+
+				if ( error ) {
+					Reject( promise, nodelike ? error : y );
+
+				} else {
+					Resolve( promise, y );
+				}
+
+				if ( trace ) {
+					currentTrace = null;
+				}
+			}
+		};
+	}
+
+	function resolverFor( promise ) {
+		var resolve = dualResolverFor( promise, false );
 
 		return {
 			promise: promise,
 
 			resolve: function( y ) {
-				if ( !done ) {
-					done = true;
-					if ( trace && !currentTrace ) {
-						currentTrace = trace;
-					}
-					Resolve( promise, y );
-				}
+				resolve( false, y );
 			},
 
 			reject: function( reason ) {
-				if ( !done ) {
-					done = true;
-					if ( trace && !currentTrace ) {
-						currentTrace = trace;
-					}
-					Reject( promise, reason );
-				}
+				resolve( true, reason );
 			}
 		};
 	}
@@ -754,32 +772,13 @@
 	P.denodeify = denodeify;
 	function denodeify( f ) {
 		return function() {
-			var len = arguments.length;
-			var args = new Array( len + 1 );
-			for ( var i = 0; i < len; ++i ) {
-				args[i] = arguments[i];
-			}
-			args[i] = resolver;
-
 			var promise = new Promise();
-			var done = false;
-			var trace = P.longStackSupport ? getTrace() : null;
 
-			function resolver( error, value ) {
-				if ( !done ) {
-					done = true;
-
-					if ( trace && !currentTrace ) {
-						currentTrace = trace;
-					}
-
-					if ( error ) {
-						Reject( promise, error );
-
-					} else {
-						Resolve( promise, value );
-					}
-				}
+			var i = arguments.length;
+			var args = new Array( i + 1 );
+			args[i] = dualResolverFor( promise, true );
+			while ( i-- ) {
+				args[i] = arguments[i];
 			}
 
 			apply.call( f, this, args );

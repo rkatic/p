@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/6/30 9:20:17)
+--- AUTO GENERATED CONTENT --- (2014/6/31 2:10:10)
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
 captureLine : not optimized : 0
@@ -30,6 +30,7 @@ HandlePending : optimized : 1
 OnSettled : optimized : 1
 Then : optimized : 2
 HandleCallback : not optimized : 0
+dualResolverFor : optimized : 1
 resolverFor : optimized : 1
 defer : optimized : 1
 reject : optimized : 1
