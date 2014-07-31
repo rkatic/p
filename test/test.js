@@ -98,8 +98,15 @@ function allValues( func ) {
 describe("P function", function() {
 
 	it("should return a promise", function() {
+		var Promise = P().constructor;
+
+		expect(
+			Promise.constructor.name === "Promise" ||
+			Promise.toString().lastIndexOf("function Promise", 0) === 0
+		).to.be(true);
+
 		map(FULLFILMENTS_AND_REJECTIONS, function( value ) {
-			expect( P(value).constructor.name ).to.be("Promise");
+			expect( P(value) instanceof Promise ).to.be(true);
 		});
 	});
 
