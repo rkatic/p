@@ -524,7 +524,7 @@ describe("denodeify", function() {
 								cb({then: function( cb, eb ) {
 									setTimeout(function _a_() {
 										eb( new Error() );
-									});
+									}, 0);
 								}});
 							}});
 
