@@ -15,10 +15,10 @@
   "scripts": {
     "minify": "uglifyjs p.js -o p.min.js -m",
     "test-own": "mocha --reporter dot -s 200 test/test.js",
-    "test-trace": "node -allow-natives-syntax test/test-and-trace.js",
+    "opt": "node -allow-natives-syntax test/test-and-trace.js",
     "test-aplus": "promises-aplus-tests test/adapter --reporter dot",
     "test": "npm run test-aplus && npm run test-own",
-    "test-local": "npm test && npm run minify"
+    "test-final": "npm test && npm run opt && npm run minify"
   },
   "keywords": [
     "promise",
