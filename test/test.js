@@ -473,28 +473,33 @@ describe("denodeify", function() {
 		P.longStackSupport = false;
 	});
 
-	var hasStacks = !!( new Error().stack );
+	function createError( msg ) {
+		try {
+			throw new Error( msg );
+
+		} catch ( e ) {
+			return e;
+		}
+	}
 
 	function checkError( error, expectedNamesStr ) {
 		expect( error instanceof Error ).to.be( true );
 
-		if ( hasStacks ) {
-			var stacks = error.stack
-				.split("_it_")[0]
-				.split("\nFrom previous event:\n");
+		var stacks = error.stack
+			.split("_it_")[0]
+			.split("\nFrom previous event:\n");
 
-			var str = map(stacks, function( stack ) {
-				return ( stack.match(/_(\w+)_/g) || [] )
-					.join("")
-					.split("__").join("-")
-					.slice(1, -1);
-			})
-			.join(" ")
-			.replace(/^\s+|\s+$/g, "")
-			.replace(/\s+/g, " ");
+		var str = map(stacks, function( stack ) {
+			return ( stack.match(/_(\w+)_/g) || [] )
+				.join("")
+				.split("__").join("-")
+				.slice(1, -1);
+		})
+		.join(" ")
+		.replace(/^\s+|\s+$/g, "")
+		.replace(/\s+/g, " ");
 
-			expect( str ).to.be( expectedNamesStr );
-		}
+		expect( str ).to.be( expectedNamesStr );
 	}
 
 	it("should make trace long on sync rejected thenable", function _it_() {
@@ -503,7 +508,7 @@ describe("denodeify", function() {
 				return P().then(function _3_() {
 					return {then: function _2_( cb, eb ) {
 					  cb({then: function _1_( cb, eb ) {
-						eb( new Error() );
+						eb( createError() );
 					  }});
 					}};
 				});

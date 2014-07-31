@@ -22,12 +22,28 @@
 })(function() {
 	"use strict";
 
-	var pStartingLine = captureLine(),
+	var withStack = withStackThrowing,
+		pStartingLine = captureLine(),
 		pFileName,
 		currentTrace = null;
 
+	function withStackThrowing( error ) {
+		if ( !error.stack ) {
+			try {
+				throw error;
+			} catch ( e ) {}
+		}
+		return error;
+	}
+
+	if ( new Error().stack ) {
+		withStack = function( error ) {
+			return error;
+		};
+	}
+
 	function getTrace() {
-		var stack = new Error().stack;
+		var stack = withStack( new Error() ).stack;
 		if ( !stack ) {
 			return null;
 		}
@@ -55,7 +71,7 @@
 	}
 
 	function captureLine() {
-		var stack = new Error().stack;
+		var stack = withStack( new Error() ).stack;
 		if ( !stack ) {
 			return 0;
 		}
@@ -102,14 +118,21 @@
 	var STACK_JUMP_SEPARATOR = "\nFrom previous event:\n";
 
 	function makeStackTraceLong( error ) {
-		if (
-			error instanceof Error &&
-			error.stack &&
-			error.stack.indexOf(STACK_JUMP_SEPARATOR) === -1
-		) {
-			error.stack = [ filterStackString( error.stack, 0 ) ]
-				.concat( currentTrace || [] )
-				.join(STACK_JUMP_SEPARATOR);
+		if ( error instanceof Error ) {
+			var stack = error.stack;
+
+			if ( !stack ) {
+				stack = withStack( error ).stack;
+
+			} else if ( ~stack.indexOf(STACK_JUMP_SEPARATOR) ) {
+				return;
+			}
+
+			if ( stack ) {
+				error.stack = [ filterStackString( stack, 0 ) ]
+					.concat( currentTrace || [] )
+					.join(STACK_JUMP_SEPARATOR);
+			}
 		}
 	}
 
