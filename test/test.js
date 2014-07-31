@@ -477,9 +477,14 @@ describe("denodeify", function() {
 				.split("\nFrom previous event:\n");
 
 			var str = map(stacks, function( stack ) {
-				var m = stack.match(/_(\w+)_/g);
-				return m ? m.join("").split("__").join("-").slice(1, -1) : "";
-			}).join(" ").replace(/\s+/g, " ");
+				return ( stack.match(/_(\w+)_/g) || [] )
+					.join("")
+					.split("__").join("-")
+					.slice(1, -1);
+			})
+			.join(" ")
+			.replace(/^\s+|\s+$/g, "")
+			.replace(/\s+/g, " ");
 
 			expect( str ).to.be( expectedNamesStr );
 		}
@@ -498,7 +503,7 @@ describe("denodeify", function() {
 			})
 		})
 		.then(fail, function( error ) {
-			checkError(error, "1-2 4 5 ");
+			checkError(error, "1-2 4 5");
 		});
 	});
 
@@ -517,7 +522,7 @@ describe("denodeify", function() {
 			})
 		})
 		.then(fail, function( error ) {
-			checkError(error, "1 4 5 ");
+			checkError(error, "1 4 5");
 		});
 	});
 
@@ -536,7 +541,7 @@ describe("denodeify", function() {
 			});
 		})
 		.then(fail, function( error ) {
-			checkError(error, "0 1 2 ");
+			checkError(error, "0 1 2");
 		});
 	});
 
@@ -547,7 +552,7 @@ describe("denodeify", function() {
 			});
 		})
 		.then(fail, function( error ) {
-			checkError(error, " 1 2 ");
+			checkError(error, "1 2");
 		});
 	});
 
