@@ -26,6 +26,7 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `P.defer()`
 - `P.all(promises)`
 - `P.allSettled(promises)`
+- `P.spread(promises, onFulfilled, onRejected)` :new:
 - `P.onerror`
 - `P.longStackSupport` :new:
 - `P.nextTick(callback)`
@@ -34,6 +35,7 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `deferred.reject(reason)`
 - `promise.then(onFulfilled, onRejected)`
 - `promise.done(onFulfilled, onRejected)`
+- `promise.fin(callback)` :new:
 - `promise.spread(onFulfilled, onRejected)`
 - `promise.all()` :new:
 - `promise.allSettled()` :new:
