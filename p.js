@@ -440,7 +440,7 @@
 			p._pending = null;
 		}
 	}
-	
+
 	function HandlePending( p, op, pending ) {
 		if ( op >= 0 ) {
 			pending( p, op );

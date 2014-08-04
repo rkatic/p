@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/7/4 13:49:59)
+--- AUTO GENERATED CONTENT --- (2014/7/4 14:34:3)
 withStackThrowing : not optimized : 0
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
@@ -40,7 +40,7 @@ Promise::_clone : optimized : 1
 Promise::then : optimized : 1
 Promise::done : optimized : 2
 Promise::fail : not optimized : 0
-Promise::fin : not optimized : 0
+Promise::fin : optimized : 1
 Promise::spread : optimized : 1
 Promise::timeout : optimized : 1
 Promise::delay : optimized : 1

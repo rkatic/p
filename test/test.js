@@ -320,6 +320,140 @@ describe("done", function() {
 	});
 });
 
+describe("fin", function() {
+
+	describe("when the promise is fulfilled", function() {
+
+		it("should call the callback and fulfill with the original value", function() {
+			var called = false;
+
+			return P("foo")
+			.fin(function() {
+				called = true;
+				return "boo";
+			})
+			.then(function( value ) {
+				expect( called ).to.be( true );
+				expect( value ).to.be("foo");
+			});
+		});
+
+		describe("when the callback returns a promise", function() {
+
+			describe("that is fulfilled", function() {
+				it("should fulfill with the original value after the promise is settled", function() {
+					var delayed = P("boo").delay(50);
+
+					return P("foo")
+					.fin(function() {
+						return delayed;
+					})
+					.then(function( value ) {
+						expect( delayed.inspect() ).to.be.eql({ state: "fulfilled", value: "boo" });
+						expect( value ).to.be("foo");
+					});
+				})
+			});
+
+			describe("that is rejected", function() {
+				it("should reject with this new reason", function() {
+					var theError = new Error("boo");
+
+					return P("foo")
+					.fin(function() {
+						return P.reject( theError );
+					})
+					.then(fail, function( reason ) {
+						expect( reason ).to.be( theError );
+					});
+				});
+			});
+
+		});
+
+		describe("when the callback throws an exception", function() {
+			it("should reject with this new exception", function() {
+				var theError = new Error("boo");
+
+				return P("foo")
+				.fin(function() {
+					throw theError;
+				})
+				.then(fail, function( reason ) {
+					expect( reason ).to.be( theError );
+				});
+			});
+		});
+
+	});
+
+	describe("when the promise is rejected", function () {
+
+		var theError = new Error("nooo");
+
+		it("should call the callback and reject with the original reason", function() {
+			var called = false;
+
+			return P.reject( theError )
+			.fin(function() {
+				called = true;
+				return "boo";
+			})
+			.then(fail, function( reason ) {
+				expect( called ).to.be( true );
+				expect( reason ).to.be( theError );
+			});
+		});
+
+		describe("when the callback returns a promise", function() {
+
+			describe("that is fulfilled", function() {
+				it("should reject with the original reason after the promise is settled", function() {
+					var delayed = P("boo").delay(50);
+
+					return P.reject( theError )
+					.fin(function() {
+						return delayed;
+					})
+					.then(fail, function( reason ) {
+						expect( delayed.inspect() ).to.be.eql({ state: "fulfilled", value: "boo" });
+						expect( reason ).to.be( theError );
+					});
+				})
+			});
+
+			describe("that is rejected", function() {
+				it("should reject with this new reason", function() {
+					return P.reject( new Error("boo") )
+					.fin(function() {
+						return P.reject( theError );
+					})
+					.then(fail, function( reason ) {
+						expect( reason ).to.be( theError );
+					});
+				});
+			});
+
+		});
+
+		describe("when the callback throws an exception", function() {
+			it("should reject with this new exception", function() {
+				var theError = new Error("boo");
+
+				return P.reject( new Error("boo") )
+				.fin(function() {
+					throw theError;
+				})
+				.then(fail, function( reason ) {
+					expect( reason ).to.be( theError );
+				});
+			});
+		});
+
+	});
+
+});
+
 describe("timeout", function() {
 
 	// This part is based on the respective part of the Q spec.
