@@ -159,6 +159,17 @@ describe("reject", function() {
 	});
 });
 
+function deep( func ) {
+	var d = P.defer();
+	var p = d.promise;
+	var n = 10000;
+	while ( n-- ) {
+		p = func([ p ]);
+	}
+	d.promise = p;
+	return d;
+}
+
 describe("all", function() {
 
 	it("resolves when passed an empty array", function() {
@@ -200,6 +211,20 @@ describe("all", function() {
 			expect( reason ).to.be( theReason );
 		});
 	});
+
+	it("should resolve on deep resolved promise", function() {
+		var d = deep( P.all );
+		d.resolve( 1 );
+		return d.promise;
+	});
+
+	it("should reject on deep rejected promise", function() {
+		var d = deep( P.all );
+		d.reject( 7 );
+		return d.promise.then(fail, function( reason ) {
+			expect( reason ).to.be( 7 );
+		});
+	});
 });
 
 describe("allSettled", function() {
@@ -224,6 +249,18 @@ describe("allSettled", function() {
 				}
 			}
 		});
+	});
+
+	it("should resolve on deep resolved promise", function() {
+		var d = deep( P.allSettled );
+		d.resolve( 1 );
+		return d.promise;
+	});
+
+	it("should resolve on deep rejected promise", function() {
+		var d = deep( P.allSettled );
+		d.reject( new Error("foo") );
+		return d.promise;
 	});
 });
 
@@ -330,7 +367,7 @@ describe("delay", function() {
 
 		setTimeout(function() {
 			expect( promise.inspect().state ).to.be("pending");
-		}, 40);
+		}, 30);
 
 		return promise;
 	});
@@ -342,7 +379,7 @@ describe("delay", function() {
 
 		setTimeout(function() {
 			expect( promise.inspect().state ).to.be("rejected");
-		}, 40);
+		}, 30);
 
 		return promise.then( fail, function(){} );
 	});

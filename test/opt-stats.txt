@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/6/31 4:10:24)
+--- AUTO GENERATED CONTENT --- (2014/7/4 13:1:45)
 withStackThrowing : not optimized : 0
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
@@ -20,15 +20,15 @@ ReportIfRejected : optimized : 2
 P : optimized : 1
 HandleSettled : optimized : 3
 Fulfill : optimized : 1
-Reject : optimized : 2
+Reject : optimized : 3
 Propagate : optimized : 1
 Resolve : optimized : 1
 ResolveWithPromise : optimized : 1
 ResolveWithObject : optimized : 1
 GetThen : not optimized : 0
 TryResolver : not optimized : 0
-HandlePending : optimized : 1
-OnSettled : optimized : 1
+HandlePending : optimized : 4
+OnSettled : optimized : 2
 Then : optimized : 2
 HandleCallback : not optimized : 0
 dualResolverFor : optimized : 1
@@ -36,19 +36,23 @@ resolverFor : optimized : 1
 defer : optimized : 1
 reject : optimized : 1
 Promise : optimized : 1
+Promise::_clone : optimized : 1
 Promise::then : optimized : 1
 Promise::done : optimized : 2
 Promise::fail : not optimized : 0
+Promise::fin : not optimized : 0
 Promise::spread : optimized : 1
 Promise::timeout : optimized : 1
+_clearTimeout : not optimized : 0
 Promise::delay : optimized : 1
 Promise::all : not optimized : 0
 Promise::allSettled : not optimized : 0
 Promise::inspect : not optimized : 0
 Promise::nodeify : optimized : 2
 allSettled : optimized : 1
-all : optimized : 2
+_allSettled : optimized : 1
+all : optimized : 1
+_all : optimized : 3
 spread : not optimized : 0
 promised : not optimized : 0
 denodeify : optimized : 1
-callValue : not optimized : 0

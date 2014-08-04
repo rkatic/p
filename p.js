@@ -299,6 +299,8 @@
 	var OP_THEN = -2;
 	var OP_MULTIPLE = -3;
 
+	var VOID = P(void 0);
+
 	function DoneEb( e ) {
 		if ( P.onerror ) {
 			(1,P.onerror)( e );
@@ -584,6 +586,12 @@
 		this._trace = null;
 	}
 
+	Promise.prototype._clone = function() {
+		var promise = new Promise();
+		ResolveWithPromise( promise, this );
+		return promise;
+	};
+
 	Promise.prototype.then = function( onFulfilled, onRejected ) {
 		var promise = new Promise();
 
@@ -624,33 +632,45 @@
 		return this.then( null, eb );
 	};
 
-	Promise.prototype.spread = function( cb, eb ) {
-		return this.then( all ).then(function( args ) {
-			return apply.call( cb, void 0, args );
-		}, eb);
-	};
+	Promise.prototype.fin = function( cb ) {
+		var p = this;
+		var promise = p.then( _finally, _finally );
 
-	Promise.prototype.timeout = function( ms, msg ) {
-		var promise = new Promise();
-
-		if ( this._state !== PENDING ) {
-			Propagate( this, promise );
-
-		} else {
-			var trace = P.longStackSupport ? getTrace() : null;
-			var timeoutId = setTimeout(function() {
-				currentTrace = trace;
-				Reject( promise, new Error(msg || "Timed out after " + ms + " ms") );
-			}, ms);
-
-			OnSettled( this, OP_CALL, function( p ) {
-				clearTimeout( timeoutId );
+		function _finally() {
+			return P( cb() ).then(function() {
 				Propagate( p, promise );
 			});
 		}
 
 		return promise;
 	};
+
+	Promise.prototype.spread = function( cb, eb ) {
+		return this.then( _all ).then(function( args ) {
+			return apply.call( cb, void 0, args );
+		}, eb);
+	};
+
+	Promise.prototype.timeout = function( ms, msg ) {
+		var promise = this._clone();
+
+		if ( this._state === PENDING ) {
+			var trace = P.longStackSupport ? getTrace() : null;
+			var timeoutId = setTimeout(function() {
+				currentTrace = trace;
+				Reject( promise, new Error(msg || "Timed out after " + ms + " ms") );
+				currentTrace = null;
+			}, ms);
+
+			OnSettled( this, timeoutId, _clearTimeout );
+		}
+
+		return promise;
+	};
+
+	function _clearTimeout( p, id ) {
+		clearTimeout( id );
+	}
 
 	Promise.prototype.delay = function( ms ) {
 		var promise = new Promise();
@@ -662,7 +682,9 @@
 				}, ms);
 
 			} else {
-				Propagate( p, promise );
+				VOID.then(function() {
+					Propagate( p, promise );
+				});
 			}
 		});
 
@@ -670,11 +692,11 @@
 	};
 
 	Promise.prototype.all = function() {
-		return this.then( all );
+		return this.then( _all );
 	};
 
 	Promise.prototype.allSettled = function() {
-		return this.then( allSettled );
+		return this.then( _allSettled );
 	};
 
 	Promise.prototype.inspect = function() {
@@ -700,6 +722,12 @@
 
 	P.allSettled = allSettled;
 	function allSettled( input ) {
+		var promise = _allSettled( input );
+		// Ensure propagation doesn't overflew the stack.
+		return promise._state ? promise : promise._clone();
+	}
+
+	function _allSettled( input ) {
 		var promise = new Promise();
 		var len = input.length;
 
@@ -731,6 +759,12 @@
 
 	P.all = all;
 	function all( input ) {
+		var promise = _all( input );
+		// Ensure propagation doesn't overflew the stack.
+		return promise._state ? promise : promise._clone();
+	}
+
+	function _all( input ) {
 		var promise = new Promise();
 		var len = input.length;
 
@@ -769,8 +803,8 @@
 	}
 
 	P.spread = spread;
-	function spread( value, cb, eb ) {
-		return all( value ).then(function( args ) {
+	function spread( values, cb, eb ) {
+		return _all( values ).then(function( args ) {
 			return apply.call( cb, void 0, args );
 		}, eb);
 	}
@@ -788,7 +822,7 @@
 			for ( var i = 0; i < len; ++i ) {
 				thisAndArgs[ i + 1 ] = arguments[ i ];
 			}
-			return all( thisAndArgs ).then( onFulfilled );
+			return _all( thisAndArgs ).then( onFulfilled );
 		};
 	}
 
@@ -813,15 +847,12 @@
 	P.onerror = null;
 
 	P.nextTick = function nextTick( task ) {
-		var p = new Promise();
-		Fulfill( p, task );
-		p = p.then( callValue );
+		// We don't use .done to avoid P.onerror.
+		var p = VOID.then(function() {
+			task.call();
+		});
 		OnSettled( p, OP_CALL, ReportIfRejected );
 	};
-
-	function callValue( value ) {
-		value.call();
-	}
 
 	var pEndingLine = captureLine();
 
