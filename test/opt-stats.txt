@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/7/4 13:1:45)
+--- AUTO GENERATED CONTENT --- (2014/7/4 13:21:53)
 withStackThrowing : not optimized : 0
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
@@ -27,7 +27,7 @@ ResolveWithPromise : optimized : 1
 ResolveWithObject : optimized : 1
 GetThen : not optimized : 0
 TryResolver : not optimized : 0
-HandlePending : optimized : 4
+HandlePending : optimized : 3
 OnSettled : optimized : 2
 Then : optimized : 2
 HandleCallback : not optimized : 0
@@ -43,7 +43,6 @@ Promise::fail : not optimized : 0
 Promise::fin : not optimized : 0
 Promise::spread : optimized : 1
 Promise::timeout : optimized : 1
-_clearTimeout : not optimized : 0
 Promise::delay : optimized : 1
 Promise::all : not optimized : 0
 Promise::allSettled : not optimized : 0

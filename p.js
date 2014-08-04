@@ -295,9 +295,9 @@
 	var FULFILLED = 1;
 	var REJECTED = 2;
 
-	var OP_CALL = -1;
-	var OP_THEN = -2;
-	var OP_MULTIPLE = -3;
+	var OP_CALL = 0;
+	var OP_THEN = -1;
+	var OP_MULTIPLE = -2;
 
 	var VOID = P(void 0);
 
@@ -442,19 +442,16 @@
 	}
 
 	function HandlePending( p, op, pending ) {
-		if ( op === OP_CALL ) {
-			pending( p );
+		if ( op >= 0 ) {
+			pending( p, op );
 
 		} else if ( op === OP_THEN ) {
 			scheduleThen( p, pending );
 
-		} else if ( op === OP_MULTIPLE ) {
+		} else {
 			for ( var i = 0, l = pending.length; i < l; i += 2 ) {
 				HandlePending( p, pending[i], pending[i + 1] );
 			}
-
-		} else {
-			pending( p, op );
 		}
 	}
 
@@ -662,15 +659,13 @@
 				currentTrace = null;
 			}, ms);
 
-			OnSettled( this, timeoutId, _clearTimeout );
+			OnSettled( this, OP_CALL, function() {
+				clearTimeout( timeoutId );
+			});
 		}
 
 		return promise;
 	};
-
-	function _clearTimeout( p, id ) {
-		clearTimeout( id );
-	}
 
 	Promise.prototype.delay = function( ms ) {
 		var promise = new Promise();
