@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/7/4 13:21:53)
+--- AUTO GENERATED CONTENT --- (2014/7/4 13:49:59)
 withStackThrowing : not optimized : 0
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
@@ -18,7 +18,6 @@ makeRequestCallFromTimer : not optimized : 0
 DoneEb : optimized : 2
 ReportIfRejected : optimized : 2
 P : optimized : 1
-HandleSettled : optimized : 3
 Fulfill : optimized : 1
 Reject : optimized : 3
 Propagate : optimized : 1
@@ -27,6 +26,7 @@ ResolveWithPromise : optimized : 1
 ResolveWithObject : optimized : 1
 GetThen : not optimized : 0
 TryResolver : not optimized : 0
+HandleSettled : optimized : 3
 HandlePending : optimized : 3
 OnSettled : optimized : 2
 Then : optimized : 2

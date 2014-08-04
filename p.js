@@ -328,13 +328,6 @@
 
 	P.longStackSupport = false;
 
-	function HandleSettled( p ) {
-		if ( p._pending ) {
-			HandlePending( p, p._op, p._pending );
-			p._pending = null;
-		}
-	}
-
 	function Fulfill( p, value ) {
 		if ( p._state ) {
 			return;
@@ -441,6 +434,13 @@
 		}
 	}
 
+	function HandleSettled( p ) {
+		if ( p._pending ) {
+			HandlePending( p, p._op, p._pending );
+			p._pending = null;
+		}
+	}
+	
 	function HandlePending( p, op, pending ) {
 		if ( op >= 0 ) {
 			pending( p, op );
