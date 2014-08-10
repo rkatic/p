@@ -408,7 +408,7 @@
 		var then = GetThen( p, x );
 
 		if ( typeof then === "function" ) {
-			TryResolver( resolverFor(p), then, x );
+			TryResolver( resolverFor(p, false), then, x );
 
 		} else {
 			Fulfill( p, x );
@@ -513,11 +513,11 @@
 		Resolve( p, x );
 	}
 
-	function dualResolverFor( promise, nodelike ) {
+	function resolverFor( promise, nodelike ) {
 		var done = false;
 		var trace = P.longStackSupport ? getTrace() : null;
 
-		return function( error, y ) {
+		function resolve( error, y ) {
 			if ( !done ) {
 				done = true;
 
@@ -541,13 +541,9 @@
 					currentTrace = null;
 				}
 			}
-		};
-	}
+		}
 
-	function resolverFor( promise ) {
-		var resolve = dualResolverFor( promise, false );
-
-		return {
+		return nodelike ? resolve : {
 			promise: promise,
 
 			resolve: function( y ) {
@@ -562,7 +558,7 @@
 
 	P.defer = defer;
 	function defer() {
-		return resolverFor( new Promise() );
+		return resolverFor( new Promise(), false );
 	}
 
 	P.reject = reject;
@@ -828,7 +824,7 @@
 
 			var i = arguments.length;
 			var args = new Array( i + 1 );
-			args[i] = dualResolverFor( promise, true );
+			args[i] = resolverFor( promise, true );
 			while ( i-- ) {
 				args[i] = arguments[i];
 			}
