@@ -602,12 +602,6 @@ describe("promised", function() {
 
 describe("denodeify", function() {
 
-	var fullfillment = P.denodeify(function( a, b, c, d, callback ) {
-		callback( a + b + c + d );
-	});
-
-
-
 	it("should fulfill if no error", function() {
 		var f = P.denodeify(function( a, b, c, d, callback ) {
 			callback( null, a + b + c + d );
@@ -623,6 +617,18 @@ describe("denodeify", function() {
 
 		var f = P.denodeify(function( a, b, c, d, callback ) {
 			callback( theError );
+		});
+
+		return f( 1, 2, 3, 4 ).then(fail, function( reason ) {
+			expect( reason ).to.be( theError );
+		});
+	});
+
+	it("should reject on thrown error", function() {
+		var theError = new Error();
+
+		var f = P.denodeify(function( a, b, c, d, callback ) {
+			throw theError;
 		});
 
 		return f( 1, 2, 3, 4 ).then(fail, function( reason ) {

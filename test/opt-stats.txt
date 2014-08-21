@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/7/10 12:28:32)
+--- AUTO GENERATED CONTENT --- (2014/7/21 4:7:1)
 withStackThrowing : not optimized : 0
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
@@ -54,3 +54,4 @@ _all : optimized : 3
 spread : not optimized : 0
 promised : not optimized : 0
 denodeify : optimized : 1
+TryApply : not optimized : 0

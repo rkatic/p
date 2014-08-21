@@ -829,10 +829,19 @@
 				args[i] = arguments[i];
 			}
 
-			apply.call( f, this, args );
+			TryApply( promise, f, this, args );
 
 			return promise;
 		};
+	}
+
+	function TryApply( p, f, that, args ) {
+		try {
+			apply.call( f, that, args );
+
+		} catch ( e ) {
+			Reject( p, e );
+		}
 	}
 
 	P.onerror = null;
