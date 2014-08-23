@@ -758,7 +758,7 @@ describe("denodeify", function() {
 
 });
 
-if ( isNodeJS && !/v0\.8\./.test(process.version) ) describe("domain", function() {
+if ( isNodeJS ) describe("domain", function() {
 
 	var domain = require("domain");
 
