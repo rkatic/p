@@ -514,12 +514,12 @@
 	}
 
 	function resolverFor( promise, nodelike ) {
-		var done = false;
 		var trace = P.longStackSupport ? getTrace() : null;
 
 		function resolve( error, y ) {
-			if ( !done ) {
-				done = true;
+			if ( promise ) {
+				var p = promise;
+				promise = null;
 
 				if ( trace ) {
 					if ( currentTrace ) {
@@ -531,14 +531,14 @@
 				}
 
 				if ( error ) {
-					Reject( promise, nodelike ? error : y );
+					Reject( p, nodelike ? error : y );
 
 				} else {
-					Resolve( promise, y );
+					Resolve( p, y );
 				}
 
 				if ( trace ) {
-					currentTrace = null;
+					currentTrace = trace = null;
 				}
 			}
 		}
@@ -758,6 +758,7 @@
 	function _all( input ) {
 		var promise = new Promise();
 		var len = input.length;
+		var ret = promise;
 
 		if ( typeof len !== "number" ) {
 			Reject( promise, new TypeError("input not array-like") );
@@ -772,6 +773,7 @@
 				if ( p._state === REJECTED ) {
 					output = null;
 					Propagate( p, promise );
+					promise = null;
 
 				} else {
 					output[ i ] = p._value;
@@ -790,7 +792,7 @@
 			Fulfill( promise, output );
 		}
 
-		return promise;
+		return ret;
 	}
 
 	P.spread = spread;
