@@ -27,6 +27,8 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `P.all(promises)`
 - `P.allSettled(promises)`
 - `P.spread(promises, onFulfilled, onRejected)` :new:
+- `P.promised(aFunction)`
+- `P.denodeify(aFunction)` :new:
 - `P.onerror`
 - `P.longStackSupport` :new:
 - `P.nextTick(callback)`
@@ -42,6 +44,4 @@ P implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - `promise.timeout(ms, opt_timeoutMsg)`
 - `promise.delay(ms)`
 - `promise.inspect()`
-- `promise.promised(aFunction)`
 - `promise.nodeify(nodeback)` :new:
-- `promise.denodeify(aFunction)` :new:
