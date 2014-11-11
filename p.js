@@ -645,18 +645,27 @@
 	};
 
 	Promise.prototype.timeout = function( ms, msg ) {
-		var promise = this._clone();
+		var promise = new Promise();
 
-		if ( this._state === PENDING ) {
+		if ( this._state ) {
+			Propagate( this, promise );
+
+		} else {
+			var timedout = false;
 			var trace = P.longStackSupport ? getTrace() : null;
+
 			var timeoutId = setTimeout(function() {
+				timedout = true;
 				currentTrace = trace;
 				Reject( promise, new Error(msg || "Timed out after " + ms + " ms") );
 				currentTrace = null;
 			}, ms);
 
-			OnSettled( this, OP_CALL, function() {
-				clearTimeout( timeoutId );
+			OnSettled( this, OP_CALL, function( p ) {
+				if ( !timedout ) {
+					scheduleThen( p, promise );
+					clearTimeout( timeoutId );
+				}
 			});
 		}
 
@@ -673,9 +682,7 @@
 				}, ms);
 
 			} else {
-				VOID.then(function() {
-					Propagate( p, promise );
-				});
+				scheduleThen( p, promise );
 			}
 		});
 

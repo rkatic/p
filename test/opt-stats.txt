@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/10/10 5:24:21)
+--- AUTO GENERATED CONTENT --- (2014/10/11 19:36:27)
 withStackThrowing : not optimized : 0
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
@@ -19,7 +19,7 @@ DoneEb : optimized : 2
 ReportIfRejected : optimized : 2
 P : optimized : 1
 Fulfill : optimized : 1
-Reject : optimized : 3
+Reject : optimized : 2
 Propagate : optimized : 1
 Resolve : optimized : 1
 ResolveWithPromise : optimized : 1
@@ -27,8 +27,8 @@ ResolveWithObject : optimized : 1
 GetThen : not optimized : 0
 TryResolver : not optimized : 0
 HandleSettled : optimized : 3
-HandlePending : optimized : 3
-OnSettled : optimized : 2
+HandlePending : optimized : 1
+OnSettled : optimized : 1
 Then : optimized : 2
 HandleCallback : not optimized : 0
 resolverFor : optimized : 1
