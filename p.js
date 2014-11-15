@@ -171,6 +171,7 @@
 	tail.next = head;
 
 	function TaskNode() {
+		this.f = null;
 		this.a = null;
 		this.b = null;
 		this.next = null;
@@ -196,19 +197,21 @@
 				++nFreeTaskNodes;
 			}
 
+			var f = h.f;
 			var a = h.a;
 			var b = h.b;
+			h.f = null;
 			h.a = null;
 			h.b = null;
 
-			Then( a, b );
+			f( a, b );
 		}
 
 		flushing = false;
 		currentTrace = null;
 	}
 
-	function scheduleThen( a, b ) {
+	function schedule( f, a, b ) {
 		var node = tail.next;
 
 		if ( node === head ) {
@@ -220,6 +223,7 @@
 
 		tail = node;
 
+		node.f = f;
 		node.a = a;
 		node.b = b;
 
@@ -290,7 +294,6 @@
 
 	//__________________________________________________________________________
 
-
 	var PENDING = 0;
 	var FULFILLED = 1;
 	var REJECTED = 2;
@@ -298,6 +301,7 @@
 	var OP_CALL = 0;
 	var OP_THEN = -1;
 	var OP_MULTIPLE = -2;
+	var OP_END = -3;
 
 	var VOID = P(void 0);
 
@@ -307,16 +311,6 @@
 
 		} else {
 			throw e;
-		}
-	}
-
-	function ReportIfRejected( p ) {
-		if ( p._state === REJECTED ) {
-			if ( p._domain ) {
-				p._domain.enter();
-			}
-
-			handleError( p._value );
 		}
 	}
 
@@ -355,7 +349,12 @@
 			p._domain = process.domain;
 		}
 
-		HandleSettled( p );
+		if ( p._op === OP_END ) {
+			handleError( reason );
+
+		} else {
+			HandleSettled( p );
+		}
 	}
 
 	function Propagate( parent, p ) {
@@ -446,7 +445,7 @@
 			pending( p, op );
 
 		} else if ( op === OP_THEN ) {
-			scheduleThen( p, pending );
+			schedule( Then, p, pending );
 
 		} else {
 			for ( var i = 0, l = pending.length; i < l; i += 2 ) {
@@ -473,21 +472,23 @@
 	}
 
 	function Then( parent, p ) {
-		var domain = parent._domain || p._domain;
-
 		currentTrace = p._trace;
 
 		var cb = parent._state === FULFILLED ? p._cb : p._eb;
 
 		p._cb = null;
 		p._eb = null;
-		p._domain = null;
 		p._trace = null;
 
 		if ( cb === null ) {
 			Propagate( parent, p );
+			return;
+		}
 
-		} else if ( domain ) {
+		var domain = parent._domain || p._domain;
+
+		if ( domain ) {
+			p._domain = null;
 			if ( !domain._disposed ) {
 				domain.enter();
 				HandleCallback( p, cb, parent._value );
@@ -579,12 +580,6 @@
 		this._trace = null;
 	}
 
-	Promise.prototype._clone = function() {
-		var promise = new Promise();
-		ResolveWithPromise( promise, this );
-		return promise;
-	};
-
 	Promise.prototype.then = function( onFulfilled, onRejected ) {
 		var promise = new Promise();
 
@@ -600,7 +595,7 @@
 		}
 
 		if ( this._state ) {
-			scheduleThen( this, promise );
+			schedule( Then, this, promise );
 
 		} else {
 			OnSettled( this, OP_THEN, promise );
@@ -616,9 +611,7 @@
 			p = p.then( cb, eb );
 		}
 
-		p = p.then( null, DoneEb );
-
-		OnSettled( p, OP_CALL, ReportIfRejected );
+		p.then( null, DoneEb )._op = OP_END;
 	};
 
 	Promise.prototype.fail = function( eb ) {
@@ -639,7 +632,7 @@
 	};
 
 	Promise.prototype.spread = function( cb, eb ) {
-		return this.then( _all ).then(function( args ) {
+		return this.then( all ).then(function( args ) {
 			return apply.call( cb, void 0, args );
 		}, eb);
 	};
@@ -663,7 +656,7 @@
 
 			OnSettled( this, OP_CALL, function( p ) {
 				if ( !timedout ) {
-					scheduleThen( p, promise );
+					schedule( Propagate, p, promise );
 					clearTimeout( timeoutId );
 				}
 			});
@@ -682,7 +675,7 @@
 				}, ms);
 
 			} else {
-				scheduleThen( p, promise );
+				schedule( Propagate, p, promise );
 			}
 		});
 
@@ -690,11 +683,11 @@
 	};
 
 	Promise.prototype.all = function() {
-		return this.then( _all );
+		return this.then( all );
 	};
 
 	Promise.prototype.allSettled = function() {
-		return this.then( _allSettled );
+		return this.then( allSettled );
 	};
 
 	Promise.prototype.inspect = function() {
@@ -720,27 +713,35 @@
 
 	P.allSettled = allSettled;
 	function allSettled( input ) {
-		var promise = _allSettled( input );
-		// Ensure propagation doesn't overflew the stack.
-		return promise._state ? promise : promise._clone();
-	}
-
-	function _allSettled( input ) {
 		var promise = new Promise();
 		var len = input.length;
 
-		if ( typeof len !== "number" ) {
+		if ( typeof len !== "number" || len < 0 ) {
 			Reject( promise, new TypeError("input not array-like") );
 			return promise;
 		}
 
+		len = len|0;
 		var output = new Array( len );
 		var waiting = len;
+		var async = false;
+
+		if ( len === 0 ) {
+			Fulfill( promise, output );
+			return promise;
+		}
+
+		var async = false;
 
 		function onSettled( p, i ) {
 			output[ i ] = p.inspect();
 			if ( --waiting === 0 ) {
-				Fulfill( promise, output );
+				if ( async ) {
+					schedule( Fulfill, promise, output );
+
+				} else {
+					Fulfill( promise, output );
+				}
 			}
 		}
 
@@ -748,44 +749,57 @@
 			OnSettled( P(input[i]), i, onSettled );
 		}
 
-		if ( waiting === 0 ) {
-			Fulfill( promise, output );
-		}
+		async = true;
 
 		return promise;
 	}
 
 	P.all = all;
 	function all( input ) {
-		var promise = _all( input );
-		// Ensure propagation doesn't overflew the stack.
-		return promise._state ? promise : promise._clone();
-	}
-
-	function _all( input ) {
 		var promise = new Promise();
 		var len = input.length;
-		var ret = promise;
 
-		if ( typeof len !== "number" ) {
+		if ( typeof len !== "number" || len < 0 ) {
 			Reject( promise, new TypeError("input not array-like") );
 			return promise;
 		}
 
+		len = len|0;
 		var output = new Array( len );
+
+		if ( len === 0 ) {
+			Fulfill( promise, output );
+			return promise;
+		}
+
 		var waiting = len;
+		var pendingPromise = promise;
+		var async = false;
 
 		function onSettled( p, i ) {
-			if ( output !== null ) {
+			if ( waiting ) {
 				if ( p._state === REJECTED ) {
-					output = null;
-					Propagate( p, promise );
-					promise = null;
+					waiting = 0;
+					var p2 = pendingPromise;
+					output = pendingPromise = null;
+
+					if ( async ) {
+						schedule( Propagate, p, p2 );
+
+					} else {
+						Propagate( p, p2 );
+					}
+
 
 				} else {
 					output[ i ] = p._value;
 					if ( --waiting === 0 ) {
-						Fulfill( promise, output );
+						if ( async ) {
+							schedule( Fulfill, pendingPromise, output );
+
+						} else {
+							Fulfill( pendingPromise, output );
+						}
 					}
 				}
 			}
@@ -795,16 +809,14 @@
 			OnSettled( P(input[i]), i, onSettled );
 		}
 
-		if ( waiting === 0 ) {
-			Fulfill( promise, output );
-		}
+		async = true;
 
-		return ret;
+		return promise;
 	}
 
 	P.spread = spread;
 	function spread( values, cb, eb ) {
-		return _all( values ).then(function( args ) {
+		return all( values ).then(function( args ) {
 			return apply.call( cb, void 0, args );
 		}, eb);
 	}
@@ -822,7 +834,7 @@
 			for ( var i = 0; i < len; ++i ) {
 				thisAndArgs[ i + 1 ] = arguments[ i ];
 			}
-			return _all( thisAndArgs ).then( onFulfilled );
+			return all( thisAndArgs ).then( onFulfilled );
 		};
 	}
 
@@ -857,10 +869,9 @@
 
 	P.nextTick = function nextTick( task ) {
 		// We don't use .done to avoid P.onerror.
-		var p = VOID.then(function() {
+		VOID.then(function() {
 			task.call();
-		});
-		OnSettled( p, OP_CALL, ReportIfRejected );
+		})._op = OP_END;
 	};
 
 	var pEndingLine = captureLine();

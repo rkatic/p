@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/10/11 19:36:27)
+--- AUTO GENERATED CONTENT --- (2014/10/15 5:43:59)
 withStackThrowing : not optimized : 0
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
@@ -10,13 +10,12 @@ makeStackTraceLong : not optimized : 0
 TaskNode : optimized : 1
 ot : not optimized : 0
 throwFirstError : not optimized : 0
-flush : not optimized : 3
-scheduleThen : optimized : 1
+flush : optimized : 1
+schedule : optimized : 1
 requestFlushForNodeJS : not optimized : 2
 makeRequestCallFromMutationObserver : not optimized : 0
 makeRequestCallFromTimer : not optimized : 0
 DoneEb : optimized : 2
-ReportIfRejected : optimized : 2
 P : optimized : 1
 Fulfill : optimized : 1
 Reject : optimized : 2
@@ -29,13 +28,12 @@ TryResolver : not optimized : 0
 HandleSettled : optimized : 3
 HandlePending : optimized : 1
 OnSettled : optimized : 1
-Then : optimized : 2
+Then : not optimized : 3
 HandleCallback : not optimized : 0
 resolverFor : optimized : 1
 defer : optimized : 1
 reject : optimized : 1
 Promise : optimized : 1
-Promise::_clone : optimized : 1
 Promise::then : optimized : 1
 Promise::done : optimized : 2
 Promise::fail : not optimized : 0
@@ -47,10 +45,8 @@ Promise::all : not optimized : 0
 Promise::allSettled : not optimized : 0
 Promise::inspect : not optimized : 0
 Promise::nodeify : optimized : 2
-allSettled : optimized : 1
-_allSettled : optimized : 1
-all : optimized : 1
-_all : optimized : 3
+allSettled : optimized : 3
+all : optimized : 3
 spread : not optimized : 0
 promised : not optimized : 0
 denodeify : optimized : 1
