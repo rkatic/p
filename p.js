@@ -329,6 +329,7 @@
 
 		p._state = FULFILLED;
 		p._value = value;
+		p._domain = null;
 
 		HandleSettled( p );
 	}
@@ -472,46 +473,39 @@
 	}
 
 	function Then( parent, p ) {
-		currentTrace = p._trace;
-
 		var cb = parent._state === FULFILLED ? p._cb : p._eb;
-
 		p._cb = null;
 		p._eb = null;
-		p._trace = null;
+
+		if ( p._trace ) {
+			currentTrace = p._trace;
+			p._trace = null;
+		}
 
 		if ( cb === null ) {
 			Propagate( parent, p );
-			return;
-		}
-
-		var domain = parent._domain || p._domain;
-
-		if ( domain ) {
-			p._domain = null;
-			if ( !domain._disposed ) {
-				domain.enter();
-				HandleCallback( p, cb, parent._value );
-				domain.exit();
-			}
 
 		} else {
-			HandleCallback( p, cb, parent._value );
+			HandleCallback( p, cb, parent._value, parent._domain || p._domain );
 		}
 	}
 
-	function HandleCallback( p, cb, value ) {
-		var x;
+	function HandleCallback( p, cb, value, domain ) {
+		if ( domain ) {
+			if ( domain._disposed ) return;
+			domain.enter();
+		}
 
 		try {
-			x = cb( value );
+			value = cb( value );
 
 		} catch ( e ) {
 			Reject( p, e );
-			return;
+			p = null;
 		}
 
-		Resolve( p, x );
+		if ( p ) Resolve( p, value );
+		if ( domain ) domain.exit();
 	}
 
 	function resolverFor( promise, nodelike ) {
