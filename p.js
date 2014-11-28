@@ -717,20 +717,19 @@
 
 		len = len|0;
 		var output = new Array( len );
-		var waiting = len;
-		var async = false;
 
 		if ( len === 0 ) {
 			Fulfill( promise, output );
 			return promise;
 		}
 
-		var async = false;
+		var waiting = len;
+		var i = 0;
 
 		function onSettled( p, i ) {
 			output[ i ] = p.inspect();
 			if ( --waiting === 0 ) {
-				if ( async ) {
+				if ( i < len ) {
 					schedule( Fulfill, promise, output );
 
 				} else {
@@ -739,11 +738,9 @@
 			}
 		}
 
-		for ( var i = 0; i < len; ++i ) {
+		for ( ; i < len; ++i ) {
 			OnSettled( P(input[i]), i, onSettled );
 		}
-
-		async = true;
 
 		return promise;
 	}
@@ -766,9 +763,9 @@
 			return promise;
 		}
 
-		var waiting = len;
 		var pendingPromise = promise;
-		var async = false;
+		var waiting = len;
+		var i = 0;
 
 		function onSettled( p, i ) {
 			if ( waiting ) {
@@ -777,7 +774,7 @@
 					var p2 = pendingPromise;
 					output = pendingPromise = null;
 
-					if ( async ) {
+					if ( i < len ) {
 						schedule( Propagate, p, p2 );
 
 					} else {
@@ -788,7 +785,7 @@
 				} else {
 					output[ i ] = p._value;
 					if ( --waiting === 0 ) {
-						if ( async ) {
+						if ( i < len ) {
 							schedule( Fulfill, pendingPromise, output );
 
 						} else {
@@ -799,11 +796,9 @@
 			}
 		}
 
-		for ( var i = 0; i < len; ++i ) {
+		for ( ; i < len; ++i ) {
 			OnSettled( P(input[i]), i, onSettled );
 		}
-
-		async = true;
 
 		return promise;
 	}
