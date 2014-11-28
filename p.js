@@ -726,14 +726,14 @@
 		var waiting = len;
 		var i = 0;
 
-		function onSettled( p, i ) {
-			output[ i ] = p.inspect();
+		function onSettled( p, j ) {
+			output[ j ] = p.inspect();
 			if ( --waiting === 0 ) {
 				if ( i < len ) {
-					schedule( Fulfill, promise, output );
+					Fulfill( promise, output );
 
 				} else {
-					Fulfill( promise, output );
+					schedule( Fulfill, promise, output );
 				}
 			}
 		}
@@ -767,7 +767,7 @@
 		var waiting = len;
 		var i = 0;
 
-		function onSettled( p, i ) {
+		function onSettled( p, j ) {
 			if ( waiting ) {
 				if ( p._state === REJECTED ) {
 					waiting = 0;
@@ -775,21 +775,22 @@
 					output = pendingPromise = null;
 
 					if ( i < len ) {
-						schedule( Propagate, p, p2 );
+						i = len;
+						Propagate( p, p2 );
 
 					} else {
-						Propagate( p, p2 );
+						schedule( Propagate, p, p2 );
 					}
 
 
 				} else {
-					output[ i ] = p._value;
+					output[ j ] = p._value;
 					if ( --waiting === 0 ) {
 						if ( i < len ) {
-							schedule( Fulfill, pendingPromise, output );
+							Fulfill( pendingPromise, output );
 
 						} else {
-							Fulfill( pendingPromise, output );
+							schedule( Fulfill, pendingPromise, output );
 						}
 					}
 				}
