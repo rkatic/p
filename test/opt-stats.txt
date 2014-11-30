@@ -1,4 +1,4 @@
---- AUTO GENERATED CONTENT --- (2014/10/30 7:0:22)
+--- AUTO GENERATED CONTENT --- (2014/10/30 9:21:48)
 withStackThrowing : not optimized : 0
 getTrace : not optimized : 0
 getFileNameAndLineNumber : not optimized : 0
@@ -46,8 +46,8 @@ Promise::allSettled : not optimized : 0
 Promise::inspect : not optimized : 0
 Promise::nodeify : optimized : 2
 _allSettled_cb : optimized : 2
-_all_cb : optimized : 5
-all : optimized : 3
+_all_cb : optimized : 3
+all : optimized : 2
 allSettled : optimized : 1
 spread : not optimized : 0
 promised : not optimized : 0

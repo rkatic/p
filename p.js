@@ -434,7 +434,7 @@
 	}
 
 	function HandleSettled( p ) {
-		if ( p._pending ) {
+		if ( p._pending !== null ) {
 			HandlePending( p, p._op, p._pending );
 			p._pending = null;
 		}
@@ -461,7 +461,7 @@
 		if ( p._state > 0 ) {
 			HandlePending( p, op, pending );
 
-		} else if ( !p._pending ) {
+		} else if ( p._pending === null ) {
 			p._pending = pending;
 			p._op = op;
 
@@ -709,10 +709,10 @@
 	function _allSettled_cb( p, i ) {
 		this._value[ i ] = p.inspect();
 		if ( ++this._state === 0 ) {
-			if ( this._pending ) {
-				schedule( Fulfill, this, this._value );
+			if ( this._pending === null ) {
+				this._state = FULFILLED;
 			} else {
-				Fulfill( this, this._value );
+				schedule( Fulfill, this, this._value );
 			}
 		}
 	}
@@ -721,19 +721,19 @@
 		if ( this._state < 0 ) {
 			if ( p._state === REJECTED ) {
 				this._state = 0;
-				if ( this._pending ) {
-					schedule( Propagate, p, this );
-				} else {
+				if ( this._pending === null ) {
 					Propagate( p, this );
+				} else {
+					schedule( Propagate, p, this );
 				}
 
 			} else {
 				this._value[ i ] = p._value;
 				if ( ++this._state === 0 ) {
-					if ( this._pending ) {
-						schedule( Fulfill, this, this._value );
+					if ( this._pending === null ) {
+						this._state = FULFILLED;
 					} else {
-						Fulfill( this, this._value );
+						schedule( Fulfill, this, this._value );
 					}
 				}
 			}
@@ -750,15 +750,11 @@
 
 		var len = input.length|0;
 
-		promise._state = -len;
+		promise._state = len ? -len : FULFILLED;
 		promise._value = new Array( len );
 
 		for ( var i = 0; i < len && promise._state < 0; ++i ) {
 			OnSettled( P(input[i]), i, promise );
-		}
-
-		if ( len === 0 ) {
-			Fulfill( promise, promise._value );
 		}
 
 		return promise;
