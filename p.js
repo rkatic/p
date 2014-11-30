@@ -706,26 +706,14 @@
 		}
 	};
 
-	function PropagateSafe( parent, p ) {
-		if ( p._pending ) {
-			schedule( Propagate, parent, p );
-		} else {
-			Propagate( parent, p );
-		}
-	}
-
-	function FulfillSafe( p, value ) {
-		if ( p._pending ) {
-			schedule( Fulfill, p, value );
-		} else {
-			Fulfill( p, value );
-		}
-	}
-
 	function _allSettled_cb( p, i ) {
 		this._value[ i ] = p.inspect();
 		if ( ++this._state === 0 ) {
-			FulfillSafe( this, this._value );
+			if ( this._pending ) {
+				schedule( Fulfill, this, this._value );
+			} else {
+				Fulfill( this, this._value );
+			}
 		}
 	}
 
@@ -733,12 +721,20 @@
 		if ( this._state < 0 ) {
 			if ( p._state === REJECTED ) {
 				this._state = 0;
-				PropagateSafe( p, this );
+				if ( this._pending ) {
+					schedule( Propagate, p, this );
+				} else {
+					Propagate( p, this );
+				}
 
 			} else {
 				this._value[ i ] = p._value;
 				if ( ++this._state === 0 ) {
-					FulfillSafe( this, this._value );
+					if ( this._pending ) {
+						schedule( Fulfill, this, this._value );
+					} else {
+						Fulfill( this, this._value );
+					}
 				}
 			}
 		}
