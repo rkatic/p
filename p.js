@@ -294,14 +294,13 @@
 
 	//__________________________________________________________________________
 
-	var PENDING = 0;
 	var FULFILLED = 1;
 	var REJECTED = 2;
 
-	var OP_CALL = 0;
-	var OP_THEN = -1;
-	var OP_MULTIPLE = -2;
-	var OP_END = -3;
+	var OP_CALL = -1;
+	var OP_THEN = -2;
+	var OP_MULTIPLE = -3;
+	var OP_END = -4;
 
 	var VOID = P(void 0);
 
@@ -323,7 +322,7 @@
 	P.longStackSupport = false;
 
 	function Fulfill( p, value ) {
-		if ( p._state ) {
+		if ( p._state > 0 ) {
 			return;
 		}
 
@@ -335,7 +334,7 @@
 	}
 
 	function Reject( p, reason ) {
-		if ( p._state ) {
+		if ( p._state > 0 ) {
 			return;
 		}
 
@@ -359,7 +358,7 @@
 	}
 
 	function Propagate( parent, p ) {
-		if ( p._state ) {
+		if ( p._state > 0 ) {
 			return;
 		}
 
@@ -371,7 +370,7 @@
 	}
 
 	function Resolve( p, x ) {
-		if ( p._state ) {
+		if ( p._state > 0 ) {
 			return p;
 		}
 
@@ -443,7 +442,10 @@
 
 	function HandlePending( p, op, pending ) {
 		if ( op >= 0 ) {
-			pending( p, op );
+			pending._cb( p, op );
+
+		} else if ( op === OP_CALL ) {
+			pending( p );
 
 		} else if ( op === OP_THEN ) {
 			schedule( Then, p, pending );
@@ -456,7 +458,7 @@
 	}
 
 	function OnSettled( p, op, pending ) {
-		if ( p._state ) {
+		if ( p._state > 0 ) {
 			HandlePending( p, op, pending );
 
 		} else if ( !p._pending ) {
@@ -588,7 +590,7 @@
 			promise._domain = process.domain;
 		}
 
-		if ( this._state ) {
+		if ( this._state > 0 ) {
 			schedule( Then, this, promise );
 
 		} else {
@@ -634,7 +636,7 @@
 	Promise.prototype.timeout = function( ms, msg ) {
 		var promise = new Promise();
 
-		if ( this._state ) {
+		if ( this._state > 0 ) {
 			Propagate( this, promise );
 
 		} else {
@@ -648,7 +650,7 @@
 				currentTrace = null;
 			}, ms);
 
-			OnSettled( this, OP_CALL, function( p ) {
+			OnSettled(this, OP_CALL, function( p ) {
 				if ( !timedout ) {
 					schedule( Propagate, p, promise );
 					clearTimeout( timeoutId );
@@ -686,10 +688,9 @@
 
 	Promise.prototype.inspect = function() {
 		switch ( this._state ) {
-			case PENDING:   return { state: "pending" };
 			case FULFILLED: return { state: "fulfilled", value: this._value };
 			case REJECTED:  return { state: "rejected", reason: this._value };
-			default: throw new TypeError("invalid state");
+			default:		return { state: "pending" };
 		}
 	};
 
@@ -705,103 +706,72 @@
 		}
 	};
 
-	P.allSettled = allSettled;
-	function allSettled( input ) {
-		var promise = new Promise();
-		var len = input.length;
-
-		if ( typeof len !== "number" || len < 0 ) {
-			Reject( promise, new TypeError("input not array-like") );
-			return promise;
+	function PropagateSafe( parent, p ) {
+		if ( p._pending ) {
+			schedule( Propagate, parent, p );
+		} else {
+			Propagate( parent, p );
 		}
+	}
 
-		len = len|0;
-		var output = new Array( len );
-
-		if ( len === 0 ) {
-			Fulfill( promise, output );
-			return promise;
+	function FulfillSafe( p, value ) {
+		if ( p._pending ) {
+			schedule( Fulfill, p, value );
+		} else {
+			Fulfill( p, value );
 		}
+	}
 
-		var waiting = len;
-		var i = 0;
+	function _allSettled_cb( p, i ) {
+		this._value[ i ] = p.inspect();
+		if ( ++this._state === 0 ) {
+			FulfillSafe( this, this._value );
+		}
+	}
 
-		function onSettled( p, j ) {
-			output[ j ] = p.inspect();
-			if ( --waiting === 0 ) {
-				if ( i < len ) {
-					Fulfill( promise, output );
+	function _all_cb( p, i ) {
+		if ( this._state < 0 ) {
+			if ( p._state === REJECTED ) {
+				this._state = 0;
+				PropagateSafe( p, this );
 
-				} else {
-					schedule( Fulfill, promise, output );
+			} else {
+				this._value[ i ] = p._value;
+				if ( ++this._state === 0 ) {
+					FulfillSafe( this, this._value );
 				}
 			}
 		}
+	}
 
-		for ( ; i < len; ++i ) {
-			OnSettled( P(input[i]), i, onSettled );
+	var nextIsAllSettled = false;
+
+	P.all = all;
+	function all( input ) {
+		var promise = new Promise();
+		promise._cb = nextIsAllSettled ? _allSettled_cb : _all_cb;
+		nextIsAllSettled = false;
+
+		var len = input.length|0;
+
+		promise._state = -len;
+		promise._value = new Array( len );
+
+		for ( var i = 0; i < len && promise._state < 0; ++i ) {
+			OnSettled( P(input[i]), i, promise );
+		}
+
+		if ( len === 0 ) {
+			Fulfill( promise, promise._value );
 		}
 
 		return promise;
 	}
 
-	P.all = all;
-	function all( input ) {
-		var promise = new Promise();
-		var len = input.length;
-
-		if ( typeof len !== "number" || len < 0 ) {
-			Reject( promise, new TypeError("input not array-like") );
-			return promise;
-		}
-
-		len = len|0;
-		var output = new Array( len );
-
-		if ( len === 0 ) {
-			Fulfill( promise, output );
-			return promise;
-		}
-
-		var pendingPromise = promise;
-		var waiting = len;
-		var i = 0;
-
-		function onSettled( p, j ) {
-			if ( waiting ) {
-				if ( p._state === REJECTED ) {
-					waiting = 0;
-					var p2 = pendingPromise;
-					output = pendingPromise = null;
-
-					if ( i < len ) {
-						i = len;
-						Propagate( p, p2 );
-
-					} else {
-						schedule( Propagate, p, p2 );
-					}
-
-
-				} else {
-					output[ j ] = p._value;
-					if ( --waiting === 0 ) {
-						if ( i < len ) {
-							Fulfill( pendingPromise, output );
-
-						} else {
-							schedule( Fulfill, pendingPromise, output );
-						}
-					}
-				}
-			}
-		}
-
-		for ( ; i < len; ++i ) {
-			OnSettled( P(input[i]), i, onSettled );
-		}
-
-		return promise;
+	P.allSettled = allSettled;
+	function allSettled( input ) {
+		nextIsAllSettled = true;
+		return all( input );
 	}
 
 	P.spread = spread;
