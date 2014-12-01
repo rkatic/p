@@ -614,9 +614,14 @@
 		return this.then( null, eb );
 	};
 
-	Promise.prototype.fin = function( fb ) {
+	Promise.prototype.fin = function( finback ) {
 		var self = this;
-		return self.then( fb, fb ).then(function( x ) {
+
+		function fb() {
+			return finback();
+		}
+
+		return self.then( fb, fb ).then(function() {
 			return self;
 		});
 	};
