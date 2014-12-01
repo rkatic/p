@@ -614,17 +614,11 @@
 		return this.then( null, eb );
 	};
 
-	Promise.prototype.fin = function( cb ) {
-		var p = this;
-		var promise = p.then( _finally, _finally );
-
-		function _finally() {
-			return P( cb() ).then(function() {
-				Propagate( p, promise );
-			});
-		}
-
-		return promise;
+	Promise.prototype.fin = function( fb ) {
+		var self = this;
+		return self.then( fb, fb ).then(function( x ) {
+			return self;
+		});
 	};
 
 	Promise.prototype.spread = function( cb, eb ) {
