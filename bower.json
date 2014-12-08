@@ -1,7 +1,7 @@
 {
   "name": "p-promise",
   "main": "p.js",
-  "version": "0.4.9",
+  "version": "0.5.0",
   "homepage": "https://github.com/rkatic/p",
   "authors": [
     "Robert Katic <robert.katic@gmail.com>"
