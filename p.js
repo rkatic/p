@@ -395,7 +395,7 @@
 		if ( x === p ) {
 			Reject( p, new TypeError("You can't resolve a promise with itself") );
 
-		} else if ( x._state ) {
+		} else if ( x._state > 0 ) {
 			Propagate( x, p );
 
 		} else {
