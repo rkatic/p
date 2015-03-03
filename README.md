@@ -15,7 +15,7 @@ A simple Promises/A+ library.
 - Supports domains.
 - Small.
 - Simple.
-- [Fast](http://jsperf.com/davy-jones-benchmark/32).
+- [Fast](http://jsperf.com/davy-jones-benchmark/52).
 
 ##API
 
