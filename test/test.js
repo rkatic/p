@@ -784,7 +784,7 @@ if ( isNodeJS ) describe("domain", function() {
 		});
 
 		return d.promise.then(function() {
-			expect( domain.active ).not.to.be( theDomain );
+			expect( domain.active ).to.be( theDomain );
 		}, fail);
 	});
 
