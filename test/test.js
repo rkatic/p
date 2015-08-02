@@ -773,6 +773,7 @@ if ( isNodeJS ) describe("domain", function() {
 		theDomain.on("error", function( error ) {
 			expect( theValue ).to.be( 47 );
 			expect( error ).to.be( theError );
+			expect( domain.active ).to.be( theDomain );
 			P().then( d.resolve );
 		})
 		.run(function() {
@@ -784,8 +785,8 @@ if ( isNodeJS ) describe("domain", function() {
 		});
 
 		return d.promise.then(function() {
-			expect( domain.active ).to.be( theDomain );
-		}, fail);
+			expect( domain.active ).not.to.be( theDomain );
+		});
 	});
 
 	it("should not evaluate promises in disposed domains", function() {
