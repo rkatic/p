@@ -237,7 +237,7 @@
 		var currentDomain = process.domain;
 
 		if ( currentDomain ) {
-			if ( !domain ) domain = (1,require)("domain");
+			if ( !domain ) domain = require("domain");
 			domain.active = process.domain = null;
 		}
 
