@@ -9,7 +9,7 @@
 
 A simple Promises/A+ library.
 
-- Implements a subset of the the [Q](https://github.com/kriskowal/q) API.
+- Implements a subset of the [Q](https://github.com/kriskowal/q) API.
 - Passing the [Promises/A+ Compliance Test Suite](https://github.com/promises-aplus/promises-tests).
 - Cross-Browser, Node.js and RequireJS ready.
 - Supports domains.
